@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+*.log
+# never commit your own copy with a real key or sheet ID
+my-config.gs
