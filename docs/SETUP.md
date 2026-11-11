@@ -95,8 +95,9 @@ Open the **Settings** tab in the sheet:
 | Credit cards | Card endings and limits, e.g. `*1234: 10000, *5678: 5000`. Purchases on these cards are spending; paying the card bill is an own transfer. |
 | Usual payday | Day of the month your salary normally arrives, e.g. `25`. Used to estimate days left until payday. |
 | No-spend streak limit | AED a day that still counts as a no-spend day (`0` means nothing at all). |
+| Monthly salary (for the budget plan) | Your usual monthly salary. Easiest to set from the dashboard: **Budget plan → Set up my plan**. A full pay jar equals this amount. |
 
-The last three rows appear automatically the first time the dashboard loads.
+The last four rows appear automatically the first time the dashboard loads.
 
 ## 8. Turn on the monthly email (optional)
 

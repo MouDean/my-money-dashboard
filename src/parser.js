@@ -160,6 +160,7 @@ function parseMessage(text, sender, owners) {
 
 // ----- categories -----
 var DEFAULT_RULES = [
+  ['Rent', 'rent, landlord, ejari, real estate, property management'],
   ['Groceries', 'carrefour, lulu, spinneys, union coop, waitrose, choithrams, al maya, grandiose, abu dhabi coop, kibsons, viva, supermarket, hypermarket, baqala, grocery, nesto, west zone'],
   ['Food', 'restau, restaurant, cafeteria, mcdonald, kfc, burger, pizza, shawarma, talabat, deliveroo, noon food, careem food, bakery, grill, kitchen, eatery, sweets, juice, five guys, shake shack, nandos, hardees, subway, popeyes, al baik, mandi, biryani, food'],
   ['Coffee & tea', 'coffee, cafe, café, starbucks, costa, tim hortons, dunkin, karak, tea, espresso, arabica, caribou, pret, cafeteria karak'],

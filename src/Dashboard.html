@@ -16,9 +16,12 @@
   --f-num:"DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme:light;
 }
-@media (prefers-color-scheme: dark){ :root{
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#0E1411; --surface:#161E1A; --ink:#E4ECE6; --muted:#93A198; --line:#28332D;
   --accent:#86A2FF; --warn:#F2B04C; --out:#F0858A; --in:#61CC93; --own:#C2B48F; --track:#222C27; --sky:#152230; --sun:#ECE6CF; --cloud:#2A3A4A; --stars:.85; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0E1411; --surface:#161E1A; --ink:#E4ECE6; --muted:#93A198; --line:#28332D;
+  --accent:#86A2FF; --warn:#F2B04C; --out:#F0858A; --in:#61CC93; --own:#C2B48F; --track:#222C27; --sky:#152230; --sun:#ECE6CF; --cloud:#2A3A4A; --stars:.85; color-scheme:dark; }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-ui);-webkit-text-size-adjust:100%}
 body{padding:calc(env(safe-area-inset-top,0px) + 14px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 96px) max(16px,env(safe-area-inset-left,0px))}
@@ -30,6 +33,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.top-r{display:flex;align-items:center;gap:6px}
+.theme{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);padding:5px 10px 5px 8px;border:1px solid var(--line);border-radius:999px;background:none;cursor:pointer;font-family:inherit}
+.theme:hover{color:var(--ink);background:var(--track)}
+.theme svg{display:block}
+@media (max-width:460px){ .theme span{display:none} .theme{padding:7px} }
 .month{display:flex;align-items:center;gap:4px}
 .month button{width:36px;height:36px;border-radius:50%;font-size:20px;color:var(--accent)}
 .month button:disabled{color:var(--line)}
@@ -41,6 +49,31 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .hero .big small{font-size:16px;color:var(--muted);margin-right:6px;font-family:var(--f-ui)}
 .flows{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 .flow{min-width:0;display:flex;flex-direction:column;gap:4px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sec-head h2{cursor:pointer;flex:1;-webkit-user-select:none;user-select:none}
+.split.sec-head h2{flex:1}
+.fold{flex:none;width:30px;height:30px;margin:-6px -4px 4px 0;border:1px solid var(--line);border-radius:999px;background:none;color:var(--muted);display:inline-grid;place-items:center;cursor:pointer}
+.fold:hover{color:var(--ink);background:var(--track)}
+.fold svg{display:block;transition:transform .18s}
+section.folded .fold svg{transform:rotate(-90deg)}
+section.folded > :not(.sec-head){display:none!important}
+section.folded .sec-head h2{margin-bottom:0}
+section.folded .sec-head .fold{margin-bottom:-6px}
+section.folded .sec-head > :not(h2):not(.fold){display:none}
+.bar2{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.bar2 .seg{flex:1 1 auto;max-width:340px;min-width:0}
+.foldall{flex:none}
+.foldall{font-size:13px;color:var(--muted);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:none;cursor:pointer}
+.foldall:hover{color:var(--ink);background:var(--track)}
+@media (prefers-reduced-motion: reduce){ .fold svg{transition:none} }
+.plan-strip{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;margin:12px 0 14px}
+.plan-strip i{display:block;aspect-ratio:1;border-radius:2px;background:var(--c)}
+@media (prefers-reduced-motion: no-preference){ .anim .plan-strip i{animation:pxon .25s steps(1) both;animation-delay:calc(var(--j) * 25ms + 300ms)} }
+.plan-g{display:grid;grid-template-columns:12px 1fr auto;gap:2px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--track)}
+.plan-g .dot{width:12px;height:12px;border-radius:2px;background:var(--c)}
+.plan-g .nm{font-weight:600}.plan-g .nm small{font-weight:400;color:var(--muted)}
+.plan-g .pxb,.plan-g .sub{grid-column:2 / 4}.plan-g .pxb{margin:4px 0 0}
+.plan-sum{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;margin-top:8px;font-size:13px}
 .pxb{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin-bottom:4px}
 .pxb i{display:block;aspect-ratio:1;max-height:9px;background:var(--track);border-radius:1px}
 .pxb i.on{background:var(--c)}
@@ -79,7 +112,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .warn{background:var(--surface);border:1px solid var(--out);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:14px}
 
 .fab{position:fixed;right:max(18px,calc(env(safe-area-inset-right,0px) + 18px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--accent);color:#fff;border-radius:999px;padding:13px 18px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.18)}
-@media (prefers-color-scheme: dark){ .fab{color:#0E1411} }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fab{color:#0E1411} }
+:root[data-theme="dark"] .fab{color:#0E1411}
 
 .sheet-bg{position:fixed;inset:0;background:rgba(10,15,12,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px max(16px,env(safe-area-inset-left,0px)) calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;flex-direction:column;gap:12px}
@@ -90,7 +124,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .sheet .check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:15px}
 .btn{padding:11px 14px;border-radius:10px;border:1px solid var(--line);font-weight:600}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-@media (prefers-color-scheme: dark){ .btn.primary{color:#0E1411} }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn.primary{color:#0E1411} }
+:root[data-theme="dark"] .btn.primary{color:#0E1411}
 .btn.danger{color:var(--out)}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{flex:1;padding:9px}.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
@@ -205,6 +240,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
   .jar .fill{animation:fillup 1.2s cubic-bezier(.2,.8,.2,1) both}
   @keyframes fillup{from{transform:scaleY(0)}}
   .jar .coin{animation:drop 2.6s ease-in infinite;opacity:0}
+  .jar .shine{animation:shine 1.4s steps(1) infinite}.jar .shine.s2{animation-delay:.7s;opacity:0}
+  @keyframes shine{0%{opacity:1}50%,100%{opacity:0}}
   @keyframes drop{0%{transform:translateY(-6px);opacity:0}15%{opacity:1}55%{transform:translateY(4px);opacity:1}70%,100%{transform:translateY(4px);opacity:0}}
   .buddy svg{animation:bob 2.4s ease-in-out infinite}
   @keyframes bob{50%{transform:translateY(-3px)}}
@@ -247,6 +284,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .hero .sub{font-size:14px;color:var(--muted)}
 .pig{flex:none;align-self:center}
 .piggy{image-rendering:pixelated;display:block}
+.mood{display:block;width:256px;max-width:100%;height:auto;aspect-ratio:64/48;image-rendering:pixelated;image-rendering:crisp-edges}
+@media (max-width:600px){ .hero-top:has(.mood){flex-direction:column;align-items:stretch} .pig:has(.mood){align-self:center} }
 .note2{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);background:var(--track);border-radius:10px;padding:8px 10px;margin-top:8px}
 .scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tower{display:block;width:100%;height:auto;max-height:280px}
@@ -306,6 +345,7 @@ button.mrow:hover{background:var(--track)}
 </style>
 </head>
 <body>
+<script>try{var t0=localStorage.getItem("mm_theme");if(t0==="light"||t0==="dark")document.documentElement.setAttribute("data-theme",t0);}catch(e){}</script>
 <div class="wrap" id="app">
   <div class="top">
     <div class="month">
@@ -313,9 +353,9 @@ button.mrow:hover{background:var(--track)}
       <strong id="mlabel">Loading…</strong>
       <button id="next" aria-label="Next month">›</button>
     </div>
-    <button class="refresh" id="refresh">Refresh</button>
+    <div class="top-r"><button class="theme" id="theme" type="button" aria-label="Theme"></button><button class="refresh" id="refresh">Refresh</button></div>
   </div>
-  <div class="seg" role="group" aria-label="View"><button data-mode="month" class="on" aria-pressed="true">Month</button><button data-mode="all" aria-pressed="false">All time</button></div>
+  <div class="bar2"><div class="seg" role="group" aria-label="View"><button data-mode="month" class="on" aria-pressed="true">Month</button><button data-mode="all" aria-pressed="false">All time</button></div><button class="foldall" id="foldAll">Collapse all</button></div>
   <div id="body"><div class="empty">Loading your transactions…</div></div>
 </div>
 <button class="fab" id="add">+ Cash</button>
@@ -566,6 +606,17 @@ var PX = {
     '..........',
     '..........',
     '..........'] },
+  home: { c: ['#C2553A', '#E8C99A', '#7A4A2A', '#6FA8DC'], g: [
+    '....aa....',
+    '...aaaa...',
+    '..aaaaaa..',
+    '.aaaaaaaa.',
+    'aaaaaaaaaa',
+    '.bbbbbbbb.',
+    '.bccbbddb.',
+    '.bccbbddb.',
+    '.bccbbbbb.',
+    '.bccbbbbb.'] },
   dots: { c: ['#9AA0A6'], g: [
     '..........',
     '..........',
@@ -579,7 +630,7 @@ var PX = {
     '..........'] }
 };
 var CAT_ICON = {
-  'Food': 'food', 'Food & coffee': 'food', 'Coffee & tea': 'coffee', 'Fuel': 'fuel', 'Groceries': 'cart',
+  'Rent': 'home', 'Food': 'food', 'Food & coffee': 'food', 'Coffee & tea': 'coffee', 'Fuel': 'fuel', 'Groceries': 'cart',
   'Transport': 'car', 'Bills & phone': 'bolt', 'Shopping': 'bag', 'Health': 'health', 'Government & post': 'mail',
   'Education': 'school', 'Subscriptions': 'play', 'Travel': 'plane', 'Entertainment': 'star', 'Charity': 'heart',
   'To people': 'person', 'From people': 'person', 'Salary': 'coins', 'Between my accounts': 'swap', 'Cash': 'note',
@@ -661,6 +712,7 @@ function render(){
   }
   if (isNow) side = streakPanel(d.streak) + side;
   g('g-side', side);
+  g('g-plan', planPanel(cats, d.budgets, d.plan, out));
   g('g-rings', ringsPanel(cats, d.budgets));
   g('g-heat', heatmap(perDay, d.month, d.today));
   g('g-sankey', sankey(aed));
@@ -682,9 +734,9 @@ function render(){
   if (foreign) t += '<p class="eyebrow" style="text-transform:none;letter-spacing:0">' + foreign + ' transaction(s) in other currencies are listed but not added to the AED totals.</p>';
   g('g-tx', t);
   var w = window.innerWidth, pick = function(list){ return list.map(function(k){ return P[k] || ''; }).join(''); };
-  if (w < 900) h += pick(['sum', 'side', 'rings', 'heat', 'flow', 'day', 'sankey', 'cat', 'trend', 'map', 'in', 'tx']);
+  if (w < 900) h += pick(['sum', 'plan', 'side', 'rings', 'heat', 'flow', 'day', 'sankey', 'cat', 'trend', 'map', 'in', 'tx']);
   else {
-    var cols = w >= 1300 ? [['flow', 'heat', 'cat', 'in'], ['rings', 'day', 'tx'], ['trend', 'sankey', 'map']] : [['flow', 'heat', 'cat', 'tx'], ['rings', 'day', 'sankey', 'trend', 'map', 'in']];
+    var cols = w >= 1300 ? [['flow', 'heat', 'cat', 'in'], ['plan', 'rings'], ['trend', 'sankey', 'map', 'day', 'tx']] : [['flow', 'heat', 'cat', 'tx'], ['plan', 'rings', 'day', 'sankey', 'trend', 'map', 'in']];
     h += '<div class="row-top">' + pick(['sum', 'side']) + '</div><div class="cols c' + cols.length + '">' +
       cols.map(function(c){ return '<div class="col">' + pick(c) + '</div>'; }).join('') + '</div>';
   }
@@ -692,6 +744,7 @@ function render(){
   var i = 0; h = h.replace(/class="g /g, function(){ return 'style="--i:' + (i++) + '" class="g '; });
   document.body.classList.toggle('anim', !!S.fresh && !RM);
   $('body').innerHTML = h;
+  foldify();
   if (S.fresh) animateIn(); else document.querySelectorAll('.arc[data-to]').forEach(function(a){ a.style.transition = 'none'; a.setAttribute('stroke-dashoffset', a.dataset.to); });
   drawMap();
 }
@@ -741,19 +794,28 @@ function dLabel(k){ return new Date(k + 'T12:00:00').toLocaleDateString('en-GB',
 // Salary to salary: spent since payday and what is left per day until the next one.
 function payCard(p){
   if (!p) return '';
-  if (p.none) return '<div class="pay"><div class="pay-in">' + jarSVG(0) + '<div><div class="eyebrow">Pay jar</div><div class="sub">Fills up when your next salary SMS arrives (or add it with + Cash, category Salary), then drains as you spend. Next payday expected around the ' + p.payday + 'th.</div></div></div></div>';
+  var cap = (S.data.plan && S.data.plan.salary) || 0;
+  if (p.none){ // before the salary: every bit of money in fills the jar (a full jar = your planned salary)
+    var inn = p.inn || 0, lvl = cap ? inn / cap : (inn > 0 ? .1 : 0);
+    if (inn > 0) lvl = Math.max(lvl, 1 / 16); // always show at least one layer
+    var fresh0 = p.lastIn && keyDiff(p.today || S.data.today, p.lastIn) <= 1;
+    return '<div class="pay"><div class="pay-in">' + jarSVG(lvl, fresh0) + '<div><div class="split"><span class="eyebrow">Pay jar · since ' + dLabel(p.from) + '</span><span>' + (cap ? Math.round(inn / cap * 100) + '% full' : '') + '</span></div>' +
+      (inn > 0 ? '<div class="payv num" style="color:var(--in)">+AED ' + money(inn, 0) + '<small> came in</small></div>' : '<div class="payv num" style="color:var(--muted)">Empty</div>') +
+      '<div class="sub">Every bit of money in fills the jar: salary, transfers, refunds, cash.' + (cap ? ' Full = your salary of AED ' + money(cap, 0) + '.' : '') + ' Spent AED ' + money(p.spent || 0, 0) + ' so far. Salary expected around the ' + p.payday + 'th.</div></div></div></div>';
+  }
   var used = p.salary ? Math.min(100, Math.max(0, p.spent / p.salary * 100)) : 0;
   var timePct = Math.min(100, p.daysIn / (p.daysIn + p.daysLeft) * 100);
   var col = p.left < 0 ? 'var(--out)' : (used > timePct + 10 ? 'var(--warn)' : 'var(--in)');
   var big = p.daysLeft > 0 ? (p.left > 0 ? 'AED ' + money(p.perDay, 0) + '<small> / day</small>' : 'AED 0<small> / day</small>') : 'Salary due any day';
   var fresh = p.start && keyDiff(p.today || S.data.today, p.start) <= 1;
-  return '<div class="pay"><div class="pay-in">' + jarSVG(p.salary ? p.left / p.salary : 0, fresh) + '<div><div class="split"><span class="eyebrow">Since payday · ' + dLabel(p.start) + ' → ~' + dLabel(p.next) + '</span><span>' +
+  var tot = p.salary + (p.otherIn || 0);
+  return '<div class="pay"><div class="pay-in">' + jarSVG(tot ? (tot - p.spent) / tot : 0, fresh) + '<div><div class="split"><span class="eyebrow">Since payday · ' + dLabel(p.start) + ' → ~' + dLabel(p.next) + '</span><span>' +
     (p.daysLeft > 0 ? p.daysLeft + ' day' + (p.daysLeft > 1 ? 's' : '') + ' to go' : '') + '</span></div>' +
     '<div class="payv num" style="color:' + col + '">' + big + '</div>' +
     '<div class="meter" role="img" aria-label="' + Math.round(used) + '% of salary spent"><i style="width:' + used.toFixed(1) + '%;background:' + col + '"></i></div>' +
     '<div class="tick" style="left:' + timePct.toFixed(1) + '%" title="Where you are in the pay period"></div>' +
     '<div class="split"><span>Spent <b class="num">' + money(p.spent) + '</b> of ' + money(p.salary, 0) + '</span><span>Left <b class="num" style="color:' + (p.left < 0 ? 'var(--out)' : 'var(--ink)') + '">' + money(p.left) + '</b></span></div>' +
-    (p.otherIn ? '<div class="split"><span>Other money in since payday: ' + money(p.otherIn) + ' (not counted)</span></div>' : '') + '</div></div></div>';
+    (p.otherIn ? '<div class="split"><span>Other money in since payday: <b class="num" style="color:var(--in)">+' + money(p.otherIn) + '</b> (topped up the jar)</span></div>' : '') + '</div></div></div>';
 }
 
 // Credit card: how much of the limit is used.
@@ -926,6 +988,7 @@ function jarSVG(p, payday) {
     s += '<g class="fill" style="transform-origin:9px 20px">';
     s += '<rect x="3" y="' + top + '" width="12" height="' + fh + '" fill="#E9B949"/>';
     s += '<rect x="3" y="' + top + '" width="12" height="1" fill="#FBE6A6"/>';
+    s += '<g class="shine"><rect x="5" y="' + top + '" width="2" height="1" fill="#FFFFFF"/><rect x="11" y="' + Math.min(19, top + 2) + '" width="1" height="1" fill="#FFF6D0"/></g><g class="shine s2"><rect x="9" y="' + top + '" width="2" height="1" fill="#FFFFFF"/><rect x="6" y="' + Math.min(19, top + 3) + '" width="1" height="1" fill="#FFF6D0"/></g>';
     [[5, 17], [9, 15], [12, 18], [6, 13], [11, 11], [4, 9], [8, 7], [12, 6]].forEach(function (c) {
       if (c[1] > top) s += '<rect x="' + c[0] + '" y="' + c[1] + '" width="2" height="1" fill="#B7862A"/>';
     });
@@ -990,6 +1053,41 @@ function heatmap(perDay, month, today) {
 
 // 3. Budget rings.
 var NOT_SPENDING = ['Salary', 'From people', 'Money in', 'Refunds', 'Between my accounts', 'Bank confirmation'];
+// Budget plan: the salary split into fixed bills, everyday, lifestyle and savings.
+var PLAN_GROUPS = [
+  { n: 'Fixed bills', c: 'var(--own)', cats: ['Rent', 'Bills & phone'] },
+  { n: 'Everyday', c: 'var(--accent)', cats: ['Groceries', 'Food', 'Coffee & tea', 'Fuel', 'Transport', 'Health', 'Government & post', 'Subscriptions', 'Education'] },
+  { n: 'Lifestyle', c: 'var(--warn)', cats: null }
+];
+function planGroup(c){ for (var i = 0; i < 2; i++) if (PLAN_GROUPS[i].cats.indexOf(c) >= 0) return i; return 2; }
+function planPanel(cats, budgets, plan, out){
+  var sal = plan && plan.salary || 0;
+  if (!sal) return '<section><h2>Budget plan</h2><div class="empty">Add your monthly salary and a budget for the categories you care about. The plan splits your salary into fixed bills, everyday, lifestyle and savings, and tracks each one as you spend.<br><br><button class="btn primary" id="editBudgets">Set up my plan</button></div></section>';
+  var g = PLAN_GROUPS.map(function (x) { return { n: x.n, c: x.c, plan: 0, spent: 0, list: [] }; });
+  Object.keys(budgets || {}).forEach(function (c) { var i = planGroup(c); g[i].plan += budgets[c]; g[i].list.push(c); });
+  Object.keys(cats).forEach(function (c) { if (NOT_SPENDING.indexOf(c) < 0) g[planGroup(c)].spent += cats[c]; });
+  var total = g[0].plan + g[1].plan + g[2].plan, save = sal - total;
+  var parts = g.map(function (x) { return { c: x.c, v: x.plan }; }).concat([{ c: 'var(--in)', v: Math.max(0, save) }]);
+  var cells = [], acc = 0, done = 0;
+  parts.forEach(function (p) { acc += p.v; var upto = Math.round(acc / Math.max(sal, total) * 40); for (; done < upto; done++) cells.push(p.c); });
+  while (cells.length < 40) cells.push('var(--track)');
+  var h = '<section><div class="split"><h2>Budget plan</h2><button class="refresh" id="editBudgets">Edit</button></div>' +
+    '<div class="sub">Salary AED ' + money(sal, 0) + ' a month</div>' +
+    '<div class="plan-strip" role="img" aria-label="Salary split: ' + g.map(function (x) { return x.n + ' ' + Math.round(x.plan / sal * 100) + '%'; }).join(', ') + ', savings ' + Math.round(save / sal * 100) + '%">' +
+    cells.map(function (c, j) { return '<i style="--c:' + c + ';--j:' + j + '"></i>'; }).join('') + '</div>';
+  g.forEach(function (x) {
+    var over = x.spent > x.plan && x.plan > 0, col = over ? 'var(--out)' : x.c;
+    h += '<div class="plan-g" style="--c:' + x.c + '"><span class="dot"></span><span class="nm">' + x.n + ' <small>' + Math.round(x.plan / sal * 100) + '%</small></span>' +
+      '<span class="num">' + money(x.spent, 0) + ' / ' + money(x.plan, 0) + '</span>' + pxbar(x.spent, Math.max(x.plan, x.spent, 1), col) +
+      '<span class="sub">' + (x.list.length ? esc(x.list.join(', ')) : 'Everything else') + '</span></div>';
+  });
+  var proj = sal - out, okSave = proj >= save;
+  h += '<div class="plan-g" style="--c:var(--in)"><span class="dot"></span><span class="nm">Savings <small>' + Math.round(save / sal * 100) + '%</small></span>' +
+    '<span class="num" style="color:var(--in)">' + money(save, 0) + '</span>' + pxbar(Math.max(0, proj), Math.max(save, proj, 1), okSave ? 'var(--in)' : 'var(--warn)') +
+    '<span class="sub">' + (okSave ? 'On track: salary minus this month’s spending leaves AED ' + money(proj, 0) : 'Spending is AED ' + money(save - proj, 0) + ' past the plan, so savings drop to AED ' + money(Math.max(0, proj), 0)) + '</span></div>';
+  h += '<div class="plan-sum"><span>Spending plan <b class="num">' + money(total, 0) + '</b></span><span>Spent <b class="num">' + money(out, 0) + '</b></span><span>Still OK to spend <b class="num" style="color:' + (total - out < 0 ? 'var(--out)' : 'var(--ink)') + '">' + money(total - out, 0) + '</b></span></div>';
+  return h + '</section>';
+}
 function ringsPanel(cats, budgets) {
   var names = Object.keys(budgets || {});
   if (!names.length) return '<section><h2>Budgets</h2><div class="empty">Set a monthly amount for the categories you care about and each one gets a ring that closes as you spend.<br><br><button class="btn primary" id="editBudgets">Set budgets</button></div></section>';
@@ -1006,14 +1104,24 @@ function ringsPanel(cats, budgets) {
 }
 function editBudgets() {
   var b = S.data.budgets || {}, cats = S.data.categories.filter(function (c) { return NOT_SPENDING.indexOf(c) < 0; });
-  openSheet('<h3>Monthly budgets (AED)</h3><p class="sub">Leave empty for no budget.</p><div class="bud">' + cats.map(function (c, i) {
+  var sal = (S.data.plan && S.data.plan.salary) || '';
+  openSheet('<h3>Budget plan (AED a month)</h3><p class="sub">Leave a category empty for no budget. Whatever is not budgeted is your savings.</p>' +
+    '<div class="bud"><label class="budrow" for="bsal"><span class="ico">' + pixel('Salary', 18) + '</span><span><b>Salary</b></span><input type="number" inputmode="decimal" min="0" step="10" id="bsal" value="' + sal + '"></label></div>' +
+    '<p class="sub" id="bleft" style="margin:6px 0 10px"></p><div class="bud">' + cats.map(function (c, i) {
     return '<label class="budrow" for="bud' + i + '"><span class="ico">' + pixel(c, 18) + '</span><span>' + esc(c) + '</span><input type="number" inputmode="decimal" min="0" step="50" id="bud' + i + '" data-cat="' + esc(c) + '" value="' + (b[c] || '') + '" placeholder="—"></label>';
-  }).join('') + '</div><div class="row"><button class="btn primary" id="bsave">Save budgets</button><button class="btn" id="bcancel">Cancel</button></div>');
+  }).join('') + '</div><div class="row"><button class="btn primary" id="bsave">Save plan</button><button class="btn" id="bcancel">Cancel</button></div>');
   $('bcancel').onclick = closeSheet;
+  var upd = function () {
+    var t = 0; document.querySelectorAll('[data-cat]').forEach(function (i) { t += parseFloat(i.value) || 0; });
+    var s = parseFloat($('bsal').value) || 0;
+    $('bleft').innerHTML = 'Budgeted <b class="num">' + money(t, 0) + '</b> · savings <b class="num" style="color:' + (s - t < 0 ? 'var(--out)' : 'var(--in)') + '">' + money(s - t, 0) + '</b>' + (s ? ' (' + Math.round((s - t) / s * 100) + '%)' : '');
+  };
+  document.querySelectorAll('.sheet input').forEach(function (i) { i.addEventListener('input', upd); }); upd();
   $('bsave').onclick = function () {
     var map = {}; document.querySelectorAll('[data-cat]').forEach(function (i) { if (parseFloat(i.value) > 0) map[i.dataset.cat] = parseFloat(i.value); });
+    if (parseFloat($('bsal').value) > 0) map.__salary = parseFloat($('bsal').value);
     this.disabled = true;
-    google.script.run.withSuccessHandler(function () { closeSheet(); toast('Budgets saved'); load(S.month); }).withFailureHandler(function (e) { toast(e.message); }).setBudgets(KEY, map);
+    google.script.run.withSuccessHandler(function () { closeSheet(); toast('Plan saved'); load(S.month); }).withFailureHandler(function (e) { toast(e.message); }).setBudgets(KEY, map);
   };
 }
 
@@ -1071,7 +1179,7 @@ function mapPanel(rows) {
   return '<section><h2>Spending map</h2><div id="map" class="map"></div><div class="note">' + pts.length + ' Apple Pay payment' + (pts.length > 1 ? 's' : '') + ' with a location this month. Bigger circles are bigger payments.</div></section>';
 }
 function drawMap() {
-  var el = document.getElementById('map'); if (!el || !S.mapPts || !S.mapPts.length) return;
+  var el = document.getElementById('map'); if (!el || !S.mapPts || !S.mapPts.length || el.closest('section.folded')) return;
   function go() {
     if (S.mapObj) { S.mapObj.remove(); S.mapObj = null; }
     var m = L.map(el, { zoomControl: true, attributionControl: true }), b = [];
@@ -1170,6 +1278,115 @@ function allStats(A){
 }
 
 // Pixel piggy bank that a coin keeps dropping into.
+// All time mood: a pixel piggy bank, drawn frame by frame on a transparent canvas.
+// Spent more than came in: cracked piggy running from fire, coins leaking. Kept more: piggy flying with a propeller, coins dropping in.
+var MoodPig = (function(){
+function P(c, x, y, col, w, h){ c.fillStyle = col; c.fillRect(x | 0, y | 0, w || 1, h || 1); }
+function spr(c, rows, pal, x, y, o){
+  o = o || {}; var h0 = rows.length, w0 = rows[0].length, w = o.w || w0, h = o.h || h0, flip = o.flip;
+  var ox = Math.round(x - w / 2), oy = Math.round(y - h); // anchored bottom-centre
+  for (var ty = 0; ty < h; ty++){ var sy = Math.min(h0 - 1, Math.floor(ty * h0 / h)), row = rows[sy];
+    for (var tx = 0; tx < w; tx++){ var sx = Math.min(w0 - 1, Math.floor(tx * w0 / w)); var ch = row.charAt(flip ? w0 - 1 - sx : sx);
+      if (ch !== '.' && pal[ch]) P(c, ox + tx, oy + ty, (o.tint && o.tint(ch, tx, ty, w, h)) || pal[ch]); } }
+  return { x: ox, y: oy, w: w, h: h };
+}
+function rnd(n){ var t = Math.sin(n * 127.1 + 311.7) * 43758.5453; return t - Math.floor(t); }
+function Fire(w, h){ this.w = w; this.h = h; this.b = new Uint8Array(w * h); }
+Fire.prototype.step = function(src){
+  var w = this.w, h = this.h, b = this.b;
+  for (var x = 0; x < w; x++) b[(h - 1) * w + x] = src(x);
+  for (var y = 0; y < h - 1; y++) for (x = 0; x < w; x++){
+    var r = Math.random() * 3.2 | 0, dec = Math.random() < .55 ? 1 : (Math.random() < .5 ? 0 : 2), v = b[(y + 1) * w + x] - dec, nx = Math.min(w - 1, Math.max(0, x - r + 1));
+    b[y * w + nx] = v < 0 ? 0 : v;
+  }
+};
+var FIREPAL = [null, null, '#3A0D0D', '#5C1408', '#8A1F07', '#B3330A', '#D4500F', '#E8701A', '#F59A23', '#FBB93A', '#FFD447', '#FFE98A', '#FFF6D0'];
+Fire.prototype.draw = function(c, ox, oy){ for (var y = 0; y < this.h; y++) for (var x = 0; x < this.w; x++){ var v = this.b[y * this.w + x]; if (v > 4) P(c, ox + x, oy + y, FIREPAL[Math.min(12, v)]); else if (v === 4 && ((x + y) & 1)) P(c, ox + x, oy + y, FIREPAL[5]); } };
+var COIN = { g: '#F5C84C', y: '#FFF1A8', G: '#B7862A', d: '#8A5A12' };
+var coinS = ['.GGG.', 'GyggG', 'GggdG', '.GGG.'];
+function coinCol(age){ return age < 3 ? COIN : age < 6 ? { g: '#C98A3A', y: '#E8B06A', G: '#7A4A18', d: '#5A3410' } : { g: '#5A3A2A', y: '#7A5A4A', G: '#2A1A14', d: '#1A100A' }; }
+var PIG = { k: '#4A2030', p: '#F2A7B8', P: '#D47F96', l: '#FFD6E0', n: '#E58AA2', e: '#1A1A1A', w: '#FFFFFF', s: '#2A1018', c: '#3A1A22' };
+var pig = ['.............kk.....', '......kkkkkkkPPk....', '....kkllppppppPPk...', '...klllppsssppppk...', '..kllpppppppppepk...', '.klppppppppppppppkkk', '.kpppppppppprppppnnk', 'kpppppppppppppppnknk', 'kpppppppppppppppnnnk', 'kPppppppppppppppkkk.', '.kPpppppppppppppPk..', '..kPPPpppppppPPPk...', '...kkkkkkkkkkkkk....'];
+PIG.r = '#FF8FAB';
+function pigLegs(c, box, by, f, fast){
+  var ph = fast ? (f >> 1) % 4 : -1;
+  [[5, 0], [9, 1], [19, 1], [23, 0]].forEach(function(l, i){
+    var off = ph < 0 ? ((f + i) >> 2 & 1) : [[0, 2], [1, 1], [2, 0], [1, 1]][ph][l[1]] * (i % 2 ? -1 : 1);
+    var x = box.x + l[0] + (ph < 0 ? 0 : off), len = ph < 0 ? 2 + off : 3;
+    P(c, x, by - 2, PIG.P, 3, len + 1); P(c, x, by - 1 + len, PIG.k, 3, 1); });
+}
+function pigTail(c, box, f){ var x = box.x, y = box.y + 7, w = (f >> 1) & 1;
+  P(c, x - 1, y, PIG.k); P(c, x - 2, y - 1 - w, PIG.P); P(c, x - 3, y - 1, PIG.P); P(c, x - 3, y - 2 + w, PIG.P); P(c, x - 2, y - 3, PIG.P); }
+
+function sceneCrack(c, f){
+  var me = sceneCrack; if (!me.fire){ me.fire = new Fire(30, 22); me.drip = []; me.dust = []; }
+  var bob = ((f >> 1) % 4) % 2, by = 42 - bob;
+  var gl = c.createRadialGradient(12, 42, 1, 14, 40, 22); gl.addColorStop(0, 'rgba(255,140,60,.25)'); gl.addColorStop(1, 'rgba(255,140,60,0)'); c.fillStyle = gl; c.fillRect(0, 16, 40, 32);
+  me.fire.step(function(x){ var t = f * .6, n = Math.sin(x * .6 + t) + Math.sin(x * 1.4 - t * 1.6) * .6, e = Math.min(x, 29 - x); if (e < 2) return 0; return n > .1 ? 12 : (n > -.7 ? 9 : 4); });
+  c.globalAlpha = .3; P(c, 20, 45, '#000000', 30, 1); c.globalAlpha = 1;
+  var box = { x: 35 - 15, y: by - 20 };
+  pigLegs(c, box, by, f, true); pigTail(c, box, f);
+  box = spr(c, pig, PIG, 35, by, { w: 30, h: 20, tint: function(ch, tx, ty, W, H){ if ((ch === 'p' || ch === 'P') && tx < 12 && ty > 8 && Math.random() > .45) return '#F7A07A'; } });
+  // crack zig-zag across its side
+  [[6, 9], [7, 10], [8, 10], [8, 11], [9, 12], [10, 12], [10, 13], [11, 14], [12, 14], [12, 15]].forEach(function(p, i){ P(c, box.x + p[0], box.y + p[1], '#3A1A22'); if (i % 3 === 0) P(c, box.x + p[0] + 1, box.y + p[1], '#5A2A33'); });
+  // panicked eye: wide white with darting pupil
+  var ex = box.x + 21, ey = box.y + 5; P(c, ex - 1, ey - 1, PIG.w, 3, 3); P(c, ex + ((f >> 2) & 1 ? 1 : 0), ey + ((f >> 3) & 1), PIG.e);
+  P(c, ex - 2, ey - 3, PIG.k, 3, 1); // worried brow
+  // coins leaking from the crack and jumping out of the slot
+  if (f % 4 === 0) me.drip.push({ x: box.x + 11, y: box.y + 16, vx: -.4 - Math.random() * .9, vy: -.4, a: 0 });
+  if (f % 9 === 0) me.drip.push({ x: box.x + 15, y: box.y + 4, vx: -.9, vy: -2.4, a: 0 });
+  me.drip = me.drip.filter(function(o){ o.a++; o.x += o.vx; o.y += o.vy; o.vy += .3; return o.y < 47; });
+  me.drip.forEach(function(o){ spr(c, ['.G.', 'GgG', '.G.'], COIN, o.x, o.y); });
+  // sweat flung backwards
+  var sw = f % 8; if (sw < 6){ P(c, box.x + 24 - sw, box.y - 1 - sw + sw * sw * .25, '#9ED8FF'); P(c, box.x + 25 - sw, box.y - 2 - sw + sw * sw * .25, '#E1F5FE'); }
+  // dust kicked up behind
+  if (f % 2 === 0) me.dust.push({ x: box.x + 2, y: by + 1, a: 0 });
+  me.dust = me.dust.filter(function(o){ o.a++; o.x -= .9; o.y -= .35; return o.a < 7; });
+  me.dust.forEach(function(o){ P(c, o.x, o.y, o.a < 4 ? '#A1887F' : '#6D5A50'); });
+  me.fire.draw(c, 0, 25); // flames chasing its tail
+}
+
+function scenePropeller(c, f){
+  var me = scenePropeller; if (!me.cl){ me.cl = [{ x: 2, y: 36, s: .35 }, { x: 40, y: 41, s: .55 }, { x: 70, y: 31, s: .3 }]; me.inbound = []; me.tw = []; }
+  me.cl.forEach(function(cl){ cl.x -= cl.s; if (cl.x < -16) cl.x = 66; var x = cl.x | 0, y = cl.y;
+    P(c, x + 3, y, '#FFFFFF', 7, 1); P(c, x + 1, y + 1, '#FFFFFF', 12, 2); P(c, x, y + 3, '#E3EEF8', 14, 1); P(c, x + 2, y + 4, '#C7D9EA', 10, 1); });
+  var fy = Math.round(Math.sin(f * .3) * 2), by = 34 + fy, box = { x: 17, y: by - 20 };
+  pigLegs(c, box, by, f, false); pigTail(c, box, f);
+  // wing behind (flaps on 2 frames)
+  var flap = (f >> 1) & 1;
+  if (flap){ P(c, box.x + 10, box.y - 3, PIG.w, 5, 1); P(c, box.x + 9, box.y - 4, PIG.w, 4, 1); P(c, box.x + 8, box.y - 5, '#E1F5FE', 3, 1); }
+  else { P(c, box.x + 9, box.y + 1, PIG.w, 6, 1); P(c, box.x + 8, box.y + 2, '#E1F5FE', 5, 1); }
+  box = spr(c, pig, PIG, 32, by, { w: 30, h: 20 });
+  // happy closed eye + blush
+  var ex = box.x + 21, ey = box.y + 6; P(c, ex - 1, ey - 1, PIG.p, 2, 2); P(c, ex - 1, ey - 1, PIG.e); P(c, ex, ey - 2, PIG.e); P(c, ex + 1, ey - 1, PIG.e); P(c, ex - 1, ey + 2, PIG.r, 3, 1);
+  // propeller: mast + 3-frame spin
+  var mx = box.x + 15, my = box.y - 5, spin = f % 3; P(c, mx, my, '#6D4C41', 1, 6);
+  if (spin === 0) P(c, mx - 5, my - 1, '#90A4AE', 11, 1);
+  else if (spin === 1){ P(c, mx - 3, my - 1, '#B0BEC5', 3, 1); P(c, mx + 1, my - 1, '#78909C', 3, 1); }
+  else { P(c, mx - 1, my - 2, '#B0BEC5', 3, 1); P(c, mx - 4, my - 1, '#CFD8DC', 2, 1); P(c, mx + 3, my - 1, '#CFD8DC', 2, 1); }
+  P(c, mx, my - 1, '#FFD54F');
+  // coins arc in from the right and drop into the slot
+  var sx = box.x + 15, sy = box.y + 4;
+  if (f % 10 === 0) me.inbound.push({ t: 0, x0: 68, y0: 4 + Math.random() * 14 });
+  me.inbound = me.inbound.filter(function(o){ o.t += .07; if (o.t >= 1){ me.tw.push({ x: sx, y: sy, a: 0 }); return false; } return true; });
+  me.inbound.forEach(function(o){ var t = o.t, x = o.x0 + (sx - o.x0) * t, y = o.y0 + (sy - o.y0) * t - Math.sin(t * Math.PI) * 9; spr(c, coinS, COIN, x, y + 2); });
+  me.tw = me.tw.filter(function(s){ s.a++; return s.a < 6; });
+  me.tw.forEach(function(s){ P(c, s.x - s.a, s.y - s.a, '#FFF59D'); P(c, s.x + s.a, s.y - s.a, '#FFFFFF'); P(c, s.x, s.y - 1 - s.a * 1.3, '#FFF59D'); });
+  // speed lines behind
+  if (flap){ P(c, 4, by - 12, '#FFFFFF', 6, 1); P(c, 2, by - 7, '#FFFFFF', 5, 1); P(c, 6, by - 16, '#FFFFFF', 3, 1); }
+}
+
+  var timer = null;
+  function start(canvas){
+    if (timer){ clearInterval(timer); timer = null; }
+    if (!canvas) return;
+    var c = canvas.getContext('2d'), draw = canvas.dataset.mood === 'bad' ? sceneCrack : scenePropeller, f = 0;
+    function tick(){ if (!document.body.contains(canvas)){ clearInterval(timer); timer = null; return; } c.clearRect(0, 0, 64, 48); draw(c, f++); }
+    if (RM){ for (var i = 0; i < 12; i++) tick(); return; }
+    tick(); timer = setInterval(tick, 1000 / 12);
+  }
+  return { start: start };
+})();
 function piggySVG(full){
   var g = ['.....ssss.......', '...aaaaaaaaa.a..', '..aaaaaaaaaaaaa.', '.aaaaaaaaaaaeaa.', 'aaaaaaaaaaaaaann', 'aaaaaaaaaaaaaann', '.aaaaaaaaaaaaaa.', '.abaaaaaaaaaaba.', '..bb.......bb...', '..bb.......bb...'];
   var col = { a: '#F2A7B8', b: '#C9748A', e: '#15231C', s: '#7A3B4C', n: '#E58AA2' }, s = '';
@@ -1381,13 +1598,13 @@ function yearPanel(s, today){
   var lastM = -1;
   for (; d <= end; d = new Date(d.getTime() + 864e5)){
     var key = d.toISOString().slice(0,10), row = (d.getDay() + 6) % 7, v = s.perDay[key] || 0, before = key < s.first;
-    if (row === 0 && d.getMonth() !== lastM){ lastM = d.getMonth(); months += '<text x="' + (wk * 12 + 22) + '" y="8" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + d.toLocaleString('en-GB', {month:'short'}) + '</text>'; }
+    if (row === 0 && d.getMonth() !== lastM){ lastM = d.getMonth(); months += '<text x="' + (wk * 12 + 22) + '" y="9" font-size="11" fill="var(--muted)" font-family="DM Mono, monospace">' + d.toLocaleString('en-GB', {month:'short'}) + '</text>'; }
     var lvl = v ? Math.max(1, Math.ceil(4 * v / max)) : 0;
     sv += '<rect class="yc l' + (before ? 'x' : lvl) + '" style="--k:' + wk + '" x="' + (wk * 12 + 22) + '" y="' + (row * 12 + 14) + '" width="10" height="10" rx="2"><title>' + key + (before ? ' · before tracking' : ' · AED ' + money(v)) + '</title></rect>';
     if (row === 6) wk++;
   }
   var W = wk * 12 + 36, lab = ['Mon','','Wed','','Fri','',''].map(function(t, i){ return t ? '<text x="0" y="' + (i * 12 + 23) + '" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + t + '</text>' : ''; }).join('');
-  return '<section class="chart"><h2>Your year in pixels</h2><div class="scrollx yearx"><svg class="year" viewBox="0 0 ' + W + ' 100" style="min-width:' + W + 'px" role="img" aria-label="Spending per day over the last year">' + months + lab + sv + '</svg></div>' +
+  return '<section class="chart"><h2>Your year in pixels</h2><div class="yearx"><svg class="year" viewBox="0 0 ' + W + ' 100" role="img" aria-label="Spending per day over the last year">' + months + lab + sv + '</svg></div>' +
     '<div class="legend heat-l"><span>Less</span><em class="l0"></em><em class="l1"></em><em class="l2"></em><em class="l3"></em><em class="l4"></em><span>More</span></div></section>';
 }
 
@@ -1431,7 +1648,7 @@ function renderAll(){
   g('g-sum', '<section class="hero"><div class="hero-top"><div><span class="eyebrow">Kept since ' + since + '</span>' +
     '<div class="big num" style="color:' + (s.net < 0 ? 'var(--out)' : 'var(--ink)') + '"><small>AED</small>' + (s.net < 0 ? '−' : '') + (S.fresh ? cnt(Math.abs(s.net)) : money(Math.abs(s.net))) + '</div>' +
     '<div class="sub">' + (s.rate == null ? 'No money in recorded yet' : (s.rate >= 0 ? Math.round(s.rate) + '% of money in kept' : 'Spent more than came in')) + ' · ' + s.nMonths + ' month' + (s.nMonths > 1 ? 's' : '') + ' tracked</div></div>' +
-    '<div class="pig">' + piggySVG(s.rate == null ? 0 : s.rate / 100) + '</div></div>' +
+    '<div class="pig">' + (s.out !== s.inn ? '<canvas class="mood" id="moodPig" width="64" height="48" data-mood="' + (s.out > s.inn ? 'bad' : 'good') + '" role="img" aria-label="' + (s.out > s.inn ? 'Cracked piggy bank running from flames, coins leaking: more went out than came in' : 'Piggy bank flying with a propeller, coins dropping in: more came in than went out') + '"></canvas>' : piggySVG(0)) + '</div></div>' +
     '<div class="flows"><div class="flow in">' + pxbar(s.inn, Math.max(s.inn, s.out, 1), 'var(--in)') + '<div class="eyebrow">Total in</div><div class="v num">' + money(s.inn, 0) + '</div></div>' +
     '<div class="flow out">' + pxbar(s.out, Math.max(s.inn, s.out, 1), 'var(--out)') + '<div class="eyebrow">Total out</div><div class="v num">' + money(s.out, 0) + '</div></div>' +
     '<div class="flow">' + pxbar(s.avgOut, Math.max(s.inn, s.out, 1), 'var(--accent)') + '<div class="eyebrow">Avg month</div><div class="v num">' + money(s.avgOut, 0) + '</div></div></div>' +
@@ -1460,10 +1677,55 @@ function renderAll(){
   var i = 0; h = h.replace(/class="g /g, function(){ return 'style="--i:' + (i++) + '" class="g '; });
   document.body.classList.toggle('anim', !!S.fresh && !RM);
   $('body').innerHTML = h;
+  foldify();
+  MoodPig.start($('moodPig'));
   document.querySelectorAll('.scrollx').forEach(function(e){ e.scrollLeft = e.scrollWidth; });
   if (S.fresh) animateIn();
 }
 
+// Collapsible panels: every section with a title gets a fold button; the choice is remembered per panel.
+var FOLD_DEFAULT = {
+  month: ['Spending calendar', 'Cash flow this month', 'Spending per day', 'Money flow this month', 'Last six months', 'Spending map', 'Money in', 'Account balances'],
+  all: ['Cash flow since you started', 'Spending mix by month', 'Categories, all time', 'Money in, by source', 'People', 'When you spend', 'Your year in pixels', 'Top places, all time', 'Biggest payments', 'Spending map', 'Money flow, all time']
+};
+var FOLD_SVG = '<svg width="12" height="12" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 1h1v1H0zM6 1h1v1H6zM1 2h1v1H1zM5 2h1v1H5zM2 3h1v1H2zM4 3h1v1H4zM3 4h1v1H3z"/></svg>';
+function foldStore(v){ try { if (v) localStorage.setItem('mm_fold', JSON.stringify(v)); else return JSON.parse(localStorage.getItem('mm_fold') || '{}'); } catch (e) { S.foldMem = v || S.foldMem || {}; return S.foldMem || {}; } }
+function foldKey(sec){ var h = sec.querySelector(':scope > h2, :scope > .split > h2'); return h ? (S.mode === 'all' ? 'all' : 'month') + ':' + String(h.firstChild && h.firstChild.textContent || h.textContent).trim() : null; }
+function isFolded(key){ var st = foldStore(); if (key in st) return !!st[key]; var p = key.split(':'); return FOLD_DEFAULT[p[0]].indexOf(p.slice(1).join(':')) >= 0; }
+function setFold(sec, on){
+  sec.classList.toggle('folded', on);
+  var b = sec.querySelector('.fold'); if (b) { b.setAttribute('aria-expanded', on ? 'false' : 'true'); b.setAttribute('aria-label', (on ? 'Expand ' : 'Collapse ') + (sec.dataset.fold || '').split(':').slice(1).join(':')); }
+}
+function foldify(){
+  document.querySelectorAll('#body section').forEach(function (sec) {
+    var key = foldKey(sec); if (!key || sec.dataset.fold) return;
+    sec.dataset.fold = key;
+    var h = sec.querySelector(':scope > h2, :scope > .split > h2'), head = h.parentNode === sec ? null : h.parentNode;
+    if (!head) { head = document.createElement('div'); sec.insertBefore(head, h); head.appendChild(h); }
+    head.classList.add('sec-head');
+    var b = document.createElement('button'); b.className = 'fold'; b.type = 'button'; b.innerHTML = FOLD_SVG; head.appendChild(b);
+    setFold(sec, isFolded(key));
+  });
+  foldAllLabel();
+}
+function foldAllLabel(){ var s = document.querySelectorAll('#body section[data-fold]'), open = 0; s.forEach(function (x) { if (!x.classList.contains('folded')) open++; }); $('foldAll').textContent = open ? 'Collapse all' : 'Expand all'; }
+function toggleFold(sec, on){
+  var st = foldStore(); st[sec.dataset.fold] = on ? 1 : 0; foldStore(st);
+  setFold(sec, on);
+  if (!on && sec.querySelector('#map')) drawMap();
+  if (!on && !RM) sec.querySelectorAll('.arc[data-to]').forEach(function (a) { a.setAttribute('stroke-dashoffset', a.dataset.to); });
+  foldAllLabel();
+}
+$('body').addEventListener('click', function (e) {
+  var b = e.target.closest('.fold') || (e.target.closest('.sec-head h2'));
+  if (!b) return;
+  var sec = b.closest('section'); toggleFold(sec, !sec.classList.contains('folded'));
+});
+$('foldAll').onclick = function () {
+  var s = document.querySelectorAll('#body section[data-fold]'), anyOpen = false;
+  s.forEach(function (x) { if (!x.classList.contains('folded')) anyOpen = true; });
+  s.forEach(function (x) { toggleFold(x, anyOpen); });
+};
 $('app').addEventListener('click', function(e){
   var b = e.target.closest('.seg button'); if (b && b.dataset.mode !== S.mode) setMode(b.dataset.mode);
 });
@@ -1473,6 +1735,21 @@ $('body').addEventListener('click', function(e){
 });
 $('prev').onclick = function(){ if (S.month) load(shiftMonth(S.month, -1)); };
 $('next').onclick = function(){ if (S.month) load(shiftMonth(S.month, 1)); };
+// Light / dark switch: Auto (follows the phone) → Light → Dark. Remembered on this device.
+var THEME_IC = {
+  auto: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h3v1H2zM1 1h1v1H1zM0 2h1v3H0zM1 5h1v1H1zM2 6h3v1H2zM5 5h1v1H5zM6 2h1v3H6zM5 1h1v1H5zM3 1h2v5H3zM5 2h1v3H5z"/></svg>',
+  light: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#E9A521" d="M3 0h1v1H3zM3 6h1v1H3zM0 3h1v1H0zM6 3h1v1H6zM1 1h1v1H1zM5 1h1v1H5zM1 5h1v1H1zM5 5h1v1H5zM2 2h3v3H2z"/></svg>',
+  dark: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#9DB2FF" d="M2 0h3v1H2zM1 1h2v1H1zM0 2h2v3H0zM1 5h2v1H1zM2 6h3v1H2zM5 5h1v1H5zM3 4h1v1H3zM4 5h1v1H4zM2 4h1v1H2zM2 3h1v1H2zM2 2h1v1H2z"/></svg>'
+};
+function themeGet(){ try { var t = localStorage.getItem('mm_theme'); return t === 'light' || t === 'dark' ? t : 'auto'; } catch (e) { return S.theme || 'auto'; } }
+function themeSet(t){
+  S.theme = t; try { if (t === 'auto') localStorage.removeItem('mm_theme'); else localStorage.setItem('mm_theme', t); } catch (e) {}
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+  $('theme').innerHTML = THEME_IC[t] + '<span>' + (t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark') + '</span>';
+  $('theme').setAttribute('aria-label', 'Theme: ' + (t === 'auto' ? 'automatic, follows your phone' : t) + '. Tap to change.');
+}
+themeSet(themeGet());
+$('theme').onclick = function(){ var t = themeGet(); var nx = t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto'; themeSet(nx); if (S.mapObj) drawMap(); toast(nx === 'auto' ? 'Theme follows your phone' : (nx === 'light' ? 'Light mode' : 'Dark mode')); };
 $('refresh').onclick = function(){ if (S.mode === 'all') loadAll(); else load(S.month); toast('Refreshed'); };
 $('add').onclick = addCash;
 window.addEventListener('resize', function(){

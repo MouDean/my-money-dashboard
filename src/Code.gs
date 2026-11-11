@@ -166,6 +166,7 @@ function parseMessage(text, sender, owners) {
 
 // ----- categories -----
 var DEFAULT_RULES = [
+  ['Rent', 'rent, landlord, ejari, real estate, property management'],
   ['Groceries', 'carrefour, lulu, spinneys, union coop, waitrose, choithrams, al maya, grandiose, abu dhabi coop, kibsons, viva, supermarket, hypermarket, baqala, grocery, nesto, west zone'],
   ['Food', 'restau, restaurant, cafeteria, mcdonald, kfc, burger, pizza, shawarma, talabat, deliveroo, noon food, careem food, bakery, grill, kitchen, eatery, sweets, juice, five guys, shake shack, nandos, hardees, subway, popeyes, al baik, mandi, biryani, food'],
   ['Coffee & tea', 'coffee, cafe, café, starbucks, costa, tim hortons, dunkin, karak, tea, espresso, arabica, caribou, pret, cafeteria karak'],
@@ -346,8 +347,36 @@ function peopleOnce_() {
   });
   props.setProperty('PEOPLE_V', PEOPLE_VERSION);
 }
+// Budget plan: salary from Settings, budgets per category in the Budgets tab.
+var PLAN_VERSION = '1';
+// Starter plan written once on first load. Leave salary 0 and budgets empty to set your own from the dashboard
+// (Budget plan → Edit). Example: { salary: 10000, budgets: { 'Rent': 2500, 'Groceries': 800, 'Food': 600 } }
+var PLAN_DEFAULT = { salary: 0, budgets: {} };
+function planOnce_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('PLAN_V') === PLAN_VERSION) return;
+  var ss = ss_(), cs = ss.getSheetByName(SHEET_CAT);
+  var names = cs.getLastRow() > 1 ? cs.getRange(2, 1, cs.getLastRow() - 1, 1).getValues().map(function (v) { return String(v[0]); }) : [];
+  if (names.indexOf('Rent') < 0) { cs.insertRowBefore(2); cs.getRange(2, 1, 1, 2).setValues([[DEFAULT_RULES[0][0], DEFAULT_RULES[0][1]]]); }
+  planSalary_(PLAN_DEFAULT.salary);
+  if (Object.keys(PLAN_DEFAULT.budgets).length && Object.keys(budgets_()).length === 0) setBudgets(key_(), PLAN_DEFAULT.budgets);
+  props.setProperty('PLAN_V', PLAN_VERSION);
+}
+// Reads the planned monthly salary from Settings (adds the row with `init` if missing, or sets it when `set` is given).
+function planSalary_(init, set) {
+  var sh = ss_().getSheetByName(SHEET_SET), n = sh.getLastRow();
+  var vals = n ? sh.getRange(1, 1, n, 2).getValues() : [];
+  for (var i = 0; i < vals.length; i++) if (/^monthly salary/i.test(String(vals[i][0]))) {
+    if (set > 0) { sh.getRange(i + 1, 2).setValue(set); return set; }
+    return parseFloat(vals[i][1]) || 0;
+  }
+  var v = set > 0 ? set : (init || 0);
+  sh.appendRow(['Monthly salary (for the budget plan)', v]);
+  return v;
+}
 function upgrade_() {
   try { peopleOnce_(); } catch (e) { console.error(e); }
+  try { planOnce_(); } catch (e) { console.error(e); }
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('RULES_V') === RULES_VERSION) return;
   var lock = LockService.getScriptLock();
@@ -404,7 +433,16 @@ function keyToUTC_(k) { var p = k.split('-'); return Date.UTC(+p[0], +p[1] - 1, 
 function period_(rows) {
   var pd = payday_(), sal = null;
   rows.forEach(function (r) { if (r.type === 'In' && r.category === 'Salary' && r.currency === 'AED' && (!sal || r.time > sal.time)) sal = r; });
-  if (!sal) return { none: true, payday: pd };
+  if (!sal) { // no salary yet: everything that came in since the last expected payday fills the jar
+    var td = dayKey_(Date.now()), tp = td.split('-'), lp = new Date(Date.UTC(+tp[0], +tp[1] - 1, pd));
+    if (dayKey_(lp.getTime()) > td) lp = new Date(Date.UTC(+tp[0], +tp[1] - 2, pd));
+    var from = lp.toISOString().slice(0, 10), inn = 0, out = 0, last = 0;
+    rows.forEach(function (r) {
+      if (r.currency !== 'AED' || dayKey_(r.time) < from) return;
+      if (r.type === 'In') { inn += r.amount; if (r.time > last) last = r.time; } else if (r.type === 'Out') out += r.amount;
+    });
+    return { none: true, payday: pd, from: from, inn: inn, spent: out, lastIn: last ? dayKey_(last) : '', today: td };
+  }
   var start = dayKey_(sal.time), today = dayKey_(Date.now());
   var p = start.split('-'), y = +p[0], m = +p[1], d = +p[2];
   var nx = new Date(Date.UTC(y, (d >= 10 ? m : m - 1), pd));
@@ -634,7 +672,7 @@ function getData(key, month) {
     else accts.push(b);
   });
   return { month: month, today: dayKey_(Date.now()), months: Object.keys(months).sort(), rows: list.reverse(),
-    trend: trend, cards: cardList, balances: accts, period: period_(rows), budgets: budgets_(), streak: streak_(rows),
+    trend: trend, cards: cardList, balances: accts, period: period_(rows), budgets: budgets_(), plan: { salary: planSalary_(0) }, streak: streak_(rows),
     categories: cats, review: Math.max(0, ss_().getSheetByName(SHEET_REV).getLastRow() - 1) };
 }
 
@@ -797,6 +835,7 @@ function budgets_() {
 // Saves monthly budgets from the dashboard: { 'Food': 800, 'Fuel': 400 }. Empty or 0 removes a budget.
 function setBudgets(key, map) {
   if (key !== key_()) throw new Error('Not allowed');
+  if (map && map.__salary !== undefined) { if (parseFloat(map.__salary) > 0) planSalary_(0, parseFloat(map.__salary)); delete map.__salary; }
   var ss = ss_(), sh = ss.getSheetByName('Budgets') || ss.insertSheet('Budgets');
   sh.clear();
   var rows = [['Category', 'Monthly budget (AED)']];

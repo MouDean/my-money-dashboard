@@ -9,7 +9,8 @@ No app to install, no bank logins, no servers to run. It is a Google Sheet, a sm
   <img src="docs/screenshots/phone-all-time.png" width="260" alt="All time view on a phone">
 </p>
 
-<p align="center"><img src="docs/screenshots/laptop-month.png" width="820" alt="Month view on a laptop"></p>
+<p align="center"><img src="docs/screenshots/laptop-month.png" width="820" alt="Month view on a laptop, dark mode"></p>
+<p align="center"><img src="docs/screenshots/laptop-month-light.png" width="820" alt="Month view on a laptop, light mode"></p>
 
 > Screenshots use made-up sample data.
 
@@ -21,16 +22,18 @@ No app to install, no bank logins, no servers to run. It is a Google Sheet, a sm
 - Recognises transfers between your own accounts and credit-card bill payments and leaves them out of income and spending.
 - Tracks credit cards against their limits (used / available).
 - Cleans up names: `AANI Transfer, FAB SARA AHMED KHAN` becomes **Sara Ahmed Khan** under *From people*.
-- Sorts payments into categories (Groceries, Food, Coffee & tea, Fuel, Transport, Bills…) and learns when you correct one.
+- Sorts payments into categories (Rent, Groceries, Food, Coffee & tea, Fuel, Transport, Bills…) and learns when you correct one.
 - Messages it can't read go to a *Review* tab instead of being lost. One-time passwords and declined payments are ignored.
 
 **Month view**
 - **Left until payday** (salary-to-salary) with a daily allowance, or *Spent this month* before your salary lands.
-- Pixel buddy that reacts to how today is going, a pay jar that drains as you spend, and a no-spend streak flame.
+- **Budget plan**: your salary split into fixed bills, everyday, lifestyle and savings as a pixel strip, with what you have spent in each group and whether you are on track to save.
+- Pixel buddy that reacts to how today is going, a no-spend streak flame, and a **pay jar** that fills with every bit of money that comes in (salary, transfers, refunds, cash) and drains as you spend.
 - Budget rings per category, spending calendar heatmap (tap a day), cash-flow chart, animated money-flow diagram, spending map of Apple Pay payments, six-month trend.
 - Tap a category to filter, search any transaction, tap a row to recategorise or mark it as an own transfer, add cash by hand.
 
 **All time view**
+- A **mood piggy bank** drawn frame by frame: when more went out than came in, a cracked piggy runs from simulated pixel flames while coins leak out; when you kept more, it flies with a propeller while coins drop into its slot.
 - Savings mountain: a pixel landscape that grows with your running savings — bare brown earth, green pines, then sakura in bloom as your savings rate rises.
 - Month-by-month table and chart, cash flow since you started, spending mix by month, category leaderboard, income by source, people you send to and receive from, weekday and time-of-day patterns, a year in pixels, top places, biggest payments, and plain-language insights.
 
@@ -39,7 +42,9 @@ No app to install, no bank logins, no servers to run. It is a Google Sheet, a sm
 - A monthly report emailed to your Gmail on the 1st, plus an *Overview* tab with charts inside the sheet.
 
 **Looks right everywhere**
-- Phone, tablet and laptop layouts, light and dark mode, and reduced motion respected.
+- Phone, tablet and laptop layouts, and reduced motion respected.
+- **Light / dark switch** (Auto follows your phone), remembered on each device.
+- Every panel can be **collapsed or expanded**, with *Collapse all*; less-used panels start collapsed and your choices are remembered.
 
 ## How it works
 

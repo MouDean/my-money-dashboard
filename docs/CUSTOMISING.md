@@ -26,9 +26,20 @@ Coffee & tea | coffee, cafe, starbucks, costa, tim hortons, karak
 
 Fixed categories the reader assigns itself: *Salary*, *From people*, *To people*, *Refunds*, *Cash*, *Bank fees*, *Between my accounts* and *Money in* / *Other* as fall-backs.
 
-## Budgets
+## Budget plan and budgets
 
-Tap **Set budgets** on the dashboard (or **Edit** above the budget rings) and enter a monthly amount for the categories you want to watch. They are stored in a **Budgets** tab. Rings turn amber at 80% and pulse red when you go over, and the monthly email reports each budget.
+Tap **Set up my plan** on the Budget plan panel (or **Edit** above it or above the budget rings). Enter your **monthly salary** and a monthly amount for the categories you want to watch. The editor shows what is left as savings while you type.
+
+- The salary is stored in **Settings → Monthly salary (for the budget plan)** and budgets in a **Budgets** tab.
+- The plan groups categories into **Fixed bills** (Rent, Bills & phone), **Everyday** (Groceries, Food, Coffee & tea, Fuel, Transport, Health, Government & post, Subscriptions, Education) and **Lifestyle** (everything else). Change the groups in `PLAN_GROUPS` in `Dashboard.html`.
+- Whatever you don't budget is your savings goal. The panel shows whether this month's spending keeps you on track.
+- Rings turn amber at 80% and pulse red when you go over, and the monthly email reports each budget.
+- To give new installs a starter plan, fill `PLAN_DEFAULT` near the top of the budget-plan section in `Code.gs`.
+- A **Rent** category is included. If you pay rent by bank transfer it may first appear under *To people*: tap it, choose Rent and keep *Always use this category*.
+
+## Pay jar
+
+Before your salary arrives, every bit of money in since the last expected payday fills the jar (salary, transfers, refunds, cash), and a full jar equals your planned salary. After the salary, the jar is salary plus other money in, minus what you spent.
 
 ## Salary
 
@@ -60,4 +71,7 @@ Messages the reader doesn't understand are saved in the **Review** tab with the 
 - Colours are CSS variables at the top of `Dashboard.html` (`--accent`, `--in`, `--out`, `--bg` …), with separate values for dark mode.
 - Pixel icons are 10×10 grids in the `PX` object; `CAT_ICON` maps categories to icons.
 - The savings mountain's look per month: under 0% kept is bare earth, 0–20% green grass, 20–40% pines, 40%+ sakura (`mtTier` in `Dashboard.html`).
+- The All time **mood piggy** is drawn on a 64×48 canvas by `MoodPig` in `Dashboard.html` (`sceneCrack` for a month where more went out, `scenePropeller` for one where you kept more). The fire is a small pixel-fire simulation (`Fire`).
+- Panels: every titled section can be collapsed. Which ones start collapsed is set in `FOLD_DEFAULT`.
+- Light / dark: the switch next to Refresh cycles Auto → Light → Dark. Colours for both live in the CSS variables at the top.
 - All animation respects the iPhone's **Reduce Motion** setting.
