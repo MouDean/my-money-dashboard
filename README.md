@@ -43,7 +43,7 @@ No app to install, no bank logins, no servers to run. It is a Google Sheet, a sm
 
 **Looks right everywhere**
 - Phone, tablet and laptop layouts, and reduced motion respected.
-- **Light / dark switch** (Auto follows your phone), remembered on each device.
+- **Light / dark switch**: one tap flips between light and dark, remembered on each device (the first visit follows your phone).
 - Every panel can be **collapsed or expanded**, with *Collapse all*; less-used panels start collapsed and your choices are remembered.
 
 ## How it works

@@ -1735,21 +1735,23 @@ $('body').addEventListener('click', function(e){
 });
 $('prev').onclick = function(){ if (S.month) load(shiftMonth(S.month, -1)); };
 $('next').onclick = function(){ if (S.month) load(shiftMonth(S.month, 1)); };
-// Light / dark switch: Auto (follows the phone) → Light → Dark. Remembered on this device.
+// Light / dark switch: one tap flips between light and dark. Remembered on this device; first visit follows the phone.
 var THEME_IC = {
   auto: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h3v1H2zM1 1h1v1H1zM0 2h1v3H0zM1 5h1v1H1zM2 6h3v1H2zM5 5h1v1H5zM6 2h1v3H6zM5 1h1v1H5zM3 1h2v5H3zM5 2h1v3H5z"/></svg>',
   light: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#E9A521" d="M3 0h1v1H3zM3 6h1v1H3zM0 3h1v1H0zM6 3h1v1H6zM1 1h1v1H1zM5 1h1v1H5zM1 5h1v1H1zM5 5h1v1H5zM2 2h3v3H2z"/></svg>',
   dark: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="#9DB2FF" d="M2 0h3v1H2zM1 1h2v1H1zM0 2h2v3H0zM1 5h2v1H1zM2 6h3v1H2zM5 5h1v1H5zM3 4h1v1H3zM4 5h1v1H4zM2 4h1v1H2zM2 3h1v1H2zM2 2h1v1H2z"/></svg>'
 };
-function themeGet(){ try { var t = localStorage.getItem('mm_theme'); return t === 'light' || t === 'dark' ? t : 'auto'; } catch (e) { return S.theme || 'auto'; } }
-function themeSet(t){
-  S.theme = t; try { if (t === 'auto') localStorage.removeItem('mm_theme'); else localStorage.setItem('mm_theme', t); } catch (e) {}
-  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
-  $('theme').innerHTML = THEME_IC[t] + '<span>' + (t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark') + '</span>';
-  $('theme').setAttribute('aria-label', 'Theme: ' + (t === 'auto' ? 'automatic, follows your phone' : t) + '. Tap to change.');
+function themeGet(){ var t = null; try { t = localStorage.getItem('mm_theme'); } catch (e) { t = S.theme; }
+  if (t === 'light' || t === 'dark') return t;
+  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+function themeSet(t, save){
+  S.theme = t; if (save) { try { localStorage.setItem('mm_theme', t); } catch (e) {} }
+  document.documentElement.setAttribute('data-theme', t);
+  $('theme').innerHTML = THEME_IC[t] + '<span>' + (t === 'light' ? 'Light' : 'Dark') + '</span>';
+  $('theme').setAttribute('aria-label', (t === 'light' ? 'Light mode' : 'Dark mode') + '. Tap to switch to ' + (t === 'light' ? 'dark' : 'light') + '.');
 }
 themeSet(themeGet());
-$('theme').onclick = function(){ var t = themeGet(); var nx = t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto'; themeSet(nx); if (S.mapObj) drawMap(); toast(nx === 'auto' ? 'Theme follows your phone' : (nx === 'light' ? 'Light mode' : 'Dark mode')); };
+$('theme').onclick = function(){ var nx = themeGet() === 'light' ? 'dark' : 'light'; themeSet(nx, true); if (S.mapObj) drawMap(); };
 $('refresh').onclick = function(){ if (S.mode === 'all') loadAll(); else load(S.month); toast('Refreshed'); };
 $('add').onclick = addCash;
 window.addEventListener('resize', function(){

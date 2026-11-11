@@ -73,5 +73,5 @@ Messages the reader doesn't understand are saved in the **Review** tab with the 
 - The savings mountain's look per month: under 0% kept is bare earth, 0–20% green grass, 20–40% pines, 40%+ sakura (`mtTier` in `Dashboard.html`).
 - The All time **mood piggy** is drawn on a 64×48 canvas by `MoodPig` in `Dashboard.html` (`sceneCrack` for a month where more went out, `scenePropeller` for one where you kept more). The fire is a small pixel-fire simulation (`Fire`).
 - Panels: every titled section can be collapsed. Which ones start collapsed is set in `FOLD_DEFAULT`.
-- Light / dark: the switch next to Refresh cycles Auto → Light → Dark. Colours for both live in the CSS variables at the top.
+- Light / dark: the switch next to Refresh flips between the two (the first visit follows the phone). Colours for both live in the CSS variables at the top.
 - All animation respects the iPhone's **Reduce Motion** setting.
