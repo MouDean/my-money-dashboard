@@ -205,6 +205,8 @@ function categorize(tx, rules) {
   }
   if (tx.kind === 'cash') return 'Cash';
   if (tx.kind === 'transfer') return tx.party ? (tx.type === 'In' ? 'From people' : 'To people') : 'Transfers';
+  // A plain "AED x was debited from your account" with no name is almost always money sent to a friend.
+  if (tx.kind === 'account' && tx.type === 'Out' && !tx.party) return tx.amount <= 5 ? 'Bank fees' : 'To people';
   if (tx.type === 'Out' && !tx.party && tx.amount <= 10) return 'Bank fees';
   if (tx.type === 'In') return 'Money in';
   return 'Other';

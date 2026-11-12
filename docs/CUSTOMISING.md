@@ -24,6 +24,8 @@ Coffee & tea | coffee, cafe, starbucks, costa, tim hortons, karak
 - Add new categories by adding a row. They appear in the dashboard's category picker.
 - **Learning:** tap a transaction on the dashboard, pick a category and keep *Always use this category* ticked. The merchant name is added to that row, so future payments there are sorted automatically.
 
+A plain account debit with no name (e.g. *AED 25.00 was debited from your account …*) is filed under **To people**, since it is usually money sent to a friend; AED 5 or less counts as *Bank fees*.
+
 Fixed categories the reader assigns itself: *Salary*, *From people*, *To people*, *Refunds*, *Cash*, *Bank fees*, *Between my accounts* and *Money in* / *Other* as fall-backs.
 
 ## Budget plan and budgets

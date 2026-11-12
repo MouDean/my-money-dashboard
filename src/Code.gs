@@ -211,6 +211,8 @@ function categorize(tx, rules) {
   }
   if (tx.kind === 'cash') return 'Cash';
   if (tx.kind === 'transfer') return tx.party ? (tx.type === 'In' ? 'From people' : 'To people') : 'Transfers';
+  // A plain "AED x was debited from your account" with no name is almost always money sent to a friend.
+  if (tx.kind === 'account' && tx.type === 'Out' && !tx.party) return tx.amount <= 5 ? 'Bank fees' : 'To people';
   if (tx.type === 'Out' && !tx.party && tx.amount <= 10) return 'Bank fees';
   if (tx.type === 'In') return 'Money in';
   return 'Other';
@@ -374,8 +376,23 @@ function planSalary_(init, set) {
   sh.appendRow(['Monthly salary (for the budget plan)', v]);
   return v;
 }
+// One-time: unnamed account debits filed as "Other" before the rule above move to "To people".
+var ACCT_VERSION = '1';
+function acctOnce_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('ACCT_V') === ACCT_VERSION) return;
+  var sh = ss_().getSheetByName(SHEET_TX), n = sh.getLastRow();
+  if (n > 1) {
+    var v = sh.getRange(2, 1, n - 1, 13).getValues(), changed = false;
+    v.forEach(function (r, i) {
+      if (r[2] === 'Out' && r[12] === 'account' && !String(r[8]).trim() && r[9] === 'Other' && Number(r[4]) > 5) { sh.getRange(i + 2, 10).setValue('To people'); changed = true; }
+    });
+  }
+  props.setProperty('ACCT_V', ACCT_VERSION);
+}
 function upgrade_() {
   try { peopleOnce_(); } catch (e) { console.error(e); }
+  try { acctOnce_(); } catch (e) { console.error(e); }
   try { planOnce_(); } catch (e) { console.error(e); }
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('RULES_V') === RULES_VERSION) return;
