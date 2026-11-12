@@ -227,6 +227,19 @@ section.folded .sec-head > :not(h2):not(.fold){display:none}
 .map{height:260px;border-radius:12px;overflow:hidden;border:1px solid var(--line);z-index:0}
 .filter{display:flex;justify-content:space-between;align-items:center;background:var(--track);border-radius:10px;padding:8px 12px;font-size:14px;margin-bottom:6px}
 .filter button{color:var(--accent);font-weight:600}
+.filter{box-shadow:inset 3px 0 0 var(--accent)}
+.tx.hl{box-shadow:inset 3px 0 0 var(--accent)}
+[data-day],[data-x],[data-goto],.sankey [data-cat-filter]{cursor:pointer}
+.hit{fill:transparent}.hit:hover{fill:color-mix(in srgb,var(--ink) 7%,transparent)}
+.hit.sel{fill:color-mix(in srgb,var(--accent) 16%,transparent)}
+.plan-g[data-x]:hover,.flow[data-x]:hover,.today[data-day]:hover{background:color-mix(in srgb,var(--ink) 4%,transparent);border-radius:8px}
+.plan-g.sel,.flow.sel{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px}
+.sankey [data-cat-filter]:hover rect{opacity:.75}
+@media (prefers-reduced-motion: no-preference){
+  .tx.hl{animation:hlr 1.5s ease-out 2}
+  .filter.flash{animation:hlr 1.5s ease-out 1}
+  @keyframes hlr{0%{background:color-mix(in srgb,var(--accent) 30%,transparent)}100%{background:transparent}}
+}
 .tx.new{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,transparent),transparent)}
 .tx.new .p::after{content:"new";font-size:10px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 6px;margin-left:6px;vertical-align:2px}
 .bud{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto}
@@ -319,7 +332,7 @@ button.mrow:hover{background:var(--track)}
 .hrs .l3{background:color-mix(in srgb,var(--out) 75%,var(--track))}.hrs .l4{background:var(--out)}
 .hrl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:var(--f-num);margin-top:3px}
 .year{display:block;height:auto;width:100%}
-.yc{fill:var(--track)}.yc.l1{fill:color-mix(in srgb,var(--out) 25%,var(--track))}.yc.l2{fill:color-mix(in srgb,var(--out) 50%,var(--track))}
+.yc{fill:var(--track)}.yc[data-goto]:hover{stroke:var(--ink);stroke-width:1}.yc.l1{fill:color-mix(in srgb,var(--out) 25%,var(--track))}.yc.l2{fill:color-mix(in srgb,var(--out) 50%,var(--track))}
 .yc.l3{fill:color-mix(in srgb,var(--out) 75%,var(--track))}.yc.l4{fill:var(--out)}.yc.lx{fill:transparent;stroke:var(--line);stroke-width:.6}
 .prow{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
 .prow:has(> .ico:first-child){grid-template-columns:auto 1fr auto}
@@ -663,8 +676,9 @@ function toast(t){ var e = document.createElement('div'); e.className = 'toast';
 function load(month){
   $('mlabel').textContent = month ? mName(month) : 'Loading…';
   google.script.run.withSuccessHandler(function(d){
-      if (d.month !== S.month){ S.dayFilter = null; S.catFilter = null; S.q = ''; }
-      S.data = d; S.month = d.month; markNew(d.rows); if (S.mode === 'all') return; S.fresh = true; render(); S.fresh = false; })
+      if (d.month !== S.month){ S.dayFilter = null; S.catFilter = null; S.xFilter = null; S.q = ''; }
+      S.data = d; S.month = d.month; markNew(d.rows); if (S.mode === 'all') return; S.fresh = true; render(); S.fresh = false;
+      if (S.pend){ S.dayFilter = S.pend.day; S.xFilter = S.pend.x; S.pend = null; render(); showTxs(); } })
     .withFailureHandler(function(e){ $('body').innerHTML = '<div class="warn">Could not load: ' + esc(e.message) + '</div>'; })
     .getData(KEY, month || null);
 }
@@ -701,10 +715,10 @@ function render(){
     : '<span class="eyebrow">Spent in ' + esc(mName(d.month).split(' ')[0]) + '</span><div class="big num"><small>AED</small>' + (S.fresh ? cnt(out) : money(out)) + '</div>';
   var sum = '<section class="hero"><div class="hero-top"><div>' + head + '</div>' +
        (bud ? '<div class="buddy ' + bud.s + '" role="status">' + buddySVG(bud.s) + '<span class="bubble">' + esc(bud.msg) + '</span></div>' : '') + '</div>' +
-       '<div class="flows"><div class="flow in">' + pxbar(inn, mx, 'var(--in)') + '<div class="eyebrow">Money in</div><div class="v num">' + money(inn, 0) + '</div></div>' +
-       '<div class="flow out">' + pxbar(out, mx, 'var(--out)') + '<div class="eyebrow">Money out</div><div class="v num">' + money(out, 0) + '</div></div>' +
+       '<div class="flows"><div class="flow in' + (S.xFilter === 'type:in' ? ' sel' : '') + '" data-x="type:in" role="button" tabindex="0" aria-label="Show money in">' + pxbar(inn, mx, 'var(--in)') + '<div class="eyebrow">Money in</div><div class="v num">' + money(inn, 0) + '</div></div>' +
+       '<div class="flow out' + (S.xFilter === 'type:out' ? ' sel' : '') + '" data-x="type:out" role="button" tabindex="0" aria-label="Show money out">' + pxbar(out, mx, 'var(--out)') + '<div class="eyebrow">Money out</div><div class="v num">' + money(out, 0) + '</div></div>' +
        '<div class="flow">' + pxbar(Math.abs(net), mx, net < 0 ? 'var(--out)' : 'var(--in)') + '<div class="eyebrow">Net</div><div class="v num" style="color:' + (net < 0 ? 'var(--out)' : 'var(--in)') + '">' + (net < 0 ? '−' : '+') + money(Math.abs(net), 0) + '</div></div></div></section>';
-  if (isNow) sum += '<div class="today"><div><div class="eyebrow">Today</div><div class="v num">AED ' + money(tOut) + '</div></div><div class="sub">' +
+  if (isNow) sum += '<div class="today" data-day="' + d.today + '" role="button" tabindex="0" aria-label="Show today\'s payments"><div><div class="eyebrow">Today</div><div class="v num">AED ' + money(tOut) + '</div></div><div class="sub">' +
        (tn ? tn + ' transaction' + (tn > 1 ? 's' : '') + (tIn ? ' · in AED ' + money(tIn) : '') : 'Nothing yet today') + '</div></div>';
   sum += payCard(d.period);
   g('g-sum', sum);
@@ -759,6 +773,7 @@ function txList(){
   var hit = rows.filter(function(r){
     if (S.dayFilter && r.day !== S.dayFilter) return false;
     if (S.catFilter && (r.type === 'Own' ? 'Between my accounts' : r.category) !== S.catFilter) return false;
+    if (S.xFilter && !xMatch(S.xFilter, r)) return false;
     if (!words.length) return true;
     var hay = [r.party, r.category, r.bank, r.account, r.currency, money(r.amount), String(r.amount), r.type === 'In' ? 'money in received' : (r.type === 'Own' ? 'own transfer between my accounts' : 'payment'),
       /wallet/.test(r.source) ? 'apple pay' : 'sms', new Date(r.day + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'})].join(' ').toLowerCase();
@@ -769,6 +784,7 @@ function txList(){
   var bits = [];
   if (S.dayFilter) bits.push(new Date(S.dayFilter + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'short'}));
   if (S.catFilter) bits.push('<span class="chipf">' + pixel(S.catFilter, 16) + esc(S.catFilter) + '</span>');
+  if (S.xFilter) bits.push('<span class="chipf">' + esc(xLabel(S.xFilter)) + '</span>');
   if (q) bits.push('“' + esc(S.q.trim()) + '”');
   if (bits.length){
     h += '<div class="filter"><span>' + bits.join(' · ') + '<br><small>' + hit.length + ' transaction' + (hit.length === 1 ? '' : 's') +
@@ -785,7 +801,35 @@ function txList(){
   });
   return h;
 }
-function showTxs(){ var t = $('txs'); if (t && S.layout === 1) t.scrollIntoView({behavior: RM ? 'auto' : 'smooth', block: 'start'}); }
+// Filters set by tapping a chart. Encoded as "kind:value" so the same tap toggles it off.
+function xMatch(x, r){
+  var k = x.slice(0, x.indexOf(':')), v = x.slice(x.indexOf(':') + 1), cat = r.type === 'Own' ? 'Between my accounts' : r.category;
+  if (k === 'type') return v === 'in' ? r.type === 'In' : r.type === 'Out';
+  if (k === 'group') return r.type === 'Out' && NOT_SPENDING.indexOf(cat) < 0 && planGroup(cat) === +v;
+  if (k === 'cats') return v.split('|').indexOf(cat) >= 0 && r.type !== 'Own';
+  if (k === 'ids') return v.split('|').indexOf(String(r.id)) >= 0;
+  if (k === 'amt') return Math.abs(r.amount - +v) < 0.005;
+  return true;
+}
+function xLabel(x){
+  var k = x.slice(0, x.indexOf(':')), v = x.slice(x.indexOf(':') + 1);
+  if (k === 'type') return v === 'in' ? 'Money in' : 'Money out';
+  if (k === 'group') return PLAN_GROUPS[+v].n;
+  if (k === 'cats') return 'Everything else';
+  if (k === 'amt') return 'AED ' + money(+v);
+  if (k === 'ids'){ var ids = v.split('|'), r = (S.data.rows || []).filter(function(t){ return ids.indexOf(String(t.id)) >= 0; }); return r.length === 1 ? (r[0].party || 'Payment') : r.length + ' payments at this place'; }
+  return '';
+}
+// After a tap on any chart: open All transactions, bring it into view, and flash the matching rows.
+function showTxs(){
+  var t = $('txs'); if (!t) return;
+  if (t.classList.contains('folded')) setFold(t, false);
+  t.scrollIntoView({behavior: RM ? 'auto' : 'smooth', block: 'start'});
+  setTimeout(function(){
+    var f = t.querySelector('.filter'); if (f){ f.classList.remove('flash'); void f.offsetWidth; f.classList.add('flash'); }
+    t.querySelectorAll('#txlist .tx').forEach(function(el){ el.classList.remove('hl'); void el.offsetWidth; el.classList.add('hl'); });
+  }, RM ? 0 : 380);
+}
 
 // Pixel bar: 16 square blocks, lit in proportion to v / max.
 function pxbar(v, max, color){
@@ -861,9 +905,13 @@ function flowChart(perDay, inDay, month, today){
   s += '<text x="' + (ex + 6) + '" y="' + (ya + 3) + '" font-size="10" fill="var(--in)" font-family="DM Mono, monospace">' + money(a, 0) + '</text>';
   s += '<text x="' + (ex + 6) + '" y="' + (yb + 3) + '" font-size="10" fill="var(--out)" font-family="DM Mono, monospace">' + money(b, 0) + '</text>';
   [1, 10, 20, days].forEach(function(dd){ s += '<text x="' + x(dd).toFixed(1) + '" y="' + (H - 5) + '" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="DM Mono, monospace">' + dd + '</text>'; });
+  var sw = (W - L - R) / Math.max(1, days - 1);
+  for (i = 1; i <= last; i++){ var kk = month + '-' + ('0'+i).slice(-2), sel = S.dayFilter === kk;
+    if (sel) s += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + T + '" y2="' + y(0) + '" stroke="var(--accent)" stroke-width="1.5"/><circle cx="' + x(i) + '" cy="' + y(cin[i-1]) + '" r="3.5" fill="var(--in)" stroke="var(--card)"/><circle cx="' + x(i) + '" cy="' + y(cout[i-1]) + '" r="3.5" fill="var(--out)" stroke="var(--card)"/>';
+    s += '<rect class="hit' + (sel ? ' sel' : '') + '" data-day="' + kk + '" x="' + (x(i) - sw / 2).toFixed(1) + '" y="' + T + '" width="' + sw.toFixed(1) + '" height="' + (y(0) - T) + '"><title>' + dLabel(kk) + ': in ' + money(inDay[kk] || 0) + ', out ' + money(perDay[kk] || 0) + '</title></rect>'; }
   s += '</svg>';
   return '<section class="chart"><h2>Cash flow this month</h2>' + s +
-    '<div class="legend"><span><i style="background:var(--in)"></i>Money in so far</span><span><i style="background:var(--out)"></i>Money out so far</span></div></section>';
+    '<div class="legend"><span><i style="background:var(--in)"></i>Money in so far</span><span><i style="background:var(--out)"></i>Money out so far</span><span>Tap a day to see its payments</span></div></section>';
 }
 
 // Last six months, money in vs out.
@@ -879,6 +927,7 @@ function trendChart(trend, month){
   s += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
   trend.forEach(function(t, i){
     var cx = gw * i + gw / 2, cur = t.month === month;
+    if (!cur) s += '<rect class="hit" data-goto="' + t.month + '" x="' + (gw * i).toFixed(1) + '" y="' + T + '" width="' + gw.toFixed(1) + '" height="' + (H - T) + '"><title>Open ' + mName(t.month) + '</title></rect>';
     if (t['in']) s += '<rect x="' + (cx - bw - 1).toFixed(1) + '" y="' + y(t['in']).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(t['in'])).toFixed(1) + '" rx="2" fill="var(--in)"><title>In AED ' + money(t['in']) + '</title></rect>';
     if (t.out) s += '<rect x="' + (cx + 1).toFixed(1) + '" y="' + y(t.out).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(t.out)).toFixed(1) + '" rx="2" fill="var(--out)"><title>Out AED ' + money(t.out) + '</title></rect>';
     var p = t.month.split('-'), lab = new Date(+p[0], +p[1]-1, 1).toLocaleString('en-GB', {month:'short'});
@@ -886,7 +935,7 @@ function trendChart(trend, month){
   });
   s += '</svg>';
   return '<section class="chart"><h2>Last six months</h2>' + s +
-    '<div class="legend"><span><i style="background:var(--in)"></i>Money in</span><span><i style="background:var(--out)"></i>Money out</span></div></section>';
+    '<div class="legend"><span><i style="background:var(--in)"></i>Money in</span><span><i style="background:var(--out)"></i>Money out</span><span>Tap a month to open it</span></div></section>';
 }
 
 function txRow(r){
@@ -913,12 +962,14 @@ function chart(perDay, month, today, n, total){
   s += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
   for (i = 0; i < days; i++){
     var k2 = month + '-' + ('0'+(i+1)).slice(-2), v = vals[i], isT = k2 === today;
-    if (v) s += '<rect x="' + (i*bw + bw*0.18).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + (bw*0.64).toFixed(1) + '" height="' + (y(0)-y(v)).toFixed(1) + '" rx="1.5" fill="' + (isT ? 'var(--out)' : 'var(--accent)') + '"><title>' + k2 + ': AED ' + money(v) + '</title></rect>';
+    var selD = S.dayFilter === k2;
+    if (v) s += '<rect x="' + (i*bw + bw*0.18).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + (bw*0.64).toFixed(1) + '" height="' + (y(0)-y(v)).toFixed(1) + '" rx="1.5" fill="' + (selD ? 'var(--ink)' : isT ? 'var(--out)' : 'var(--accent)') + '"/>';
+    if (v) s += '<rect class="hit' + (selD ? ' sel' : '') + '" data-day="' + k2 + '" x="' + (i*bw).toFixed(1) + '" y="' + padT + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - padT).toFixed(1) + '"><title>' + dLabel(k2) + ': AED ' + money(v) + '</title></rect>';
     if ((i+1) === 1 || (i+1) % 5 === 0) s += '<text x="' + (i*bw + bw/2).toFixed(1) + '" y="' + (H - 4) + '" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="DM Mono, monospace">' + (i+1) + '</text>';
   }
   s += '</svg>';
   var spentDays = vals.filter(Boolean).length;
-  return '<section class="chart"><h2>Spending per day</h2>' + s + '<div class="note">' + n + ' payments on ' + spentDays + ' days · average AED ' + money(total / spentDays) + ' on a spending day</div></section>';
+  return '<section class="chart"><h2>Spending per day</h2>' + s + '<div class="note">' + n + ' payments on ' + spentDays + ' days · average AED ' + money(total / spentDays) + ' on a spending day · tap a bar to see that day</div></section>';
 }
 
 function openSheet(html){ $('modal').innerHTML = '<div class="sheet-bg" id="bg"><div class="sheet" role="dialog" aria-modal="true">' + html + '</div></div>';
@@ -1087,7 +1138,8 @@ function planPanel(cats, budgets, plan, out){
     cells.map(function (c, j) { return '<i style="--c:' + c + ';--j:' + j + '"></i>'; }).join('') + '</div>';
   g.forEach(function (x) {
     var over = x.spent > x.plan && x.plan > 0, col = over ? 'var(--out)' : x.c;
-    h += '<div class="plan-g" style="--c:' + x.c + '"><span class="dot"></span><span class="nm">' + x.n + ' <small>' + Math.round(x.plan / sal * 100) + '%</small></span>' +
+    var gi = g.indexOf(x);
+    h += '<div class="plan-g' + (S.xFilter === 'group:' + gi ? ' sel' : '') + '" data-x="group:' + gi + '" role="button" tabindex="0" aria-label="Show ' + x.n + ' payments" style="--c:' + x.c + '"><span class="dot"></span><span class="nm">' + x.n + ' <small>' + Math.round(x.plan / sal * 100) + '%</small></span>' +
       '<span class="num">' + money(x.spent, 0) + ' / ' + money(x.plan, 0) + '</span>' + pxbar(x.spent, Math.max(x.plan, x.spent, 1), col) +
       '<span class="sub">' + (x.list.length ? esc(x.list.join(', ')) : 'Everything else') + '</span></div>';
   });
@@ -1146,7 +1198,7 @@ function sankey(aed) {
   var S1 = Object.keys(src).map(function (k) { return { n: k, v: src[k] }; }).sort(function (a, b) { return b.v - a.v; });
   var D1 = Object.keys(dst).map(function (k) { return { n: k, v: dst[k] }; }).sort(function (a, b) { return b.v - a.v; });
   var Tm = Math.max(tin, tout), keep = D1.filter(function (x, i) { return i < 5 && x.v >= Tm * 0.05; });
-  if (keep.length < D1.length) { var rest = D1.slice(keep.length).reduce(function (s, x) { return s + x.v; }, 0); D1 = keep.concat([{ n: 'Everything else', v: rest }]); }
+  if (keep.length < D1.length) { var restN = D1.slice(keep.length).map(function (x) { return x.n; }), rest = D1.slice(keep.length).reduce(function (s, x) { return s + x.v; }, 0); D1 = keep.concat([{ n: 'Everything else', v: rest, cats: restN }]); }
   if (tout > tin) S1.push({ n: 'Earlier balance', v: tout - tin, ghost: true });
   if (tin > tout) D1.push({ n: 'Not spent yet', v: tin - tout, ghost: true });
   var T = Math.max(tin, tout), W = 360, H = 230, L = 96, R = 96, gap = 6, bw = 8;
@@ -1164,9 +1216,14 @@ function sankey(aed) {
         ' L' + x1 + ',' + (yb + hb).toFixed(1) + ' C' + xm + ',' + (yb + hb).toFixed(1) + ' ' + xm + ',' + (ya + ha).toFixed(1) + ' ' + x0 + ',' + (ya + ha).toFixed(1) + ' Z" fill="' + colr(a.n, a.ghost) + '" opacity=".32"/>';
     });
   });
-  S1.forEach(function (a) { s += '<rect x="' + L + '" y="' + a.y.toFixed(1) + '" width="' + bw + '" height="' + a.h.toFixed(1) + '" rx="2" fill="' + colr(a.n, a.ghost) + '"/><text x="' + (L - 6) + '" y="' + (a.y + a.h / 2 + 3).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--ink)">' + esc(a.n) + '</text><text x="' + (L - 6) + '" y="' + (a.y + a.h / 2 + 14).toFixed(1) + '" text-anchor="end" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + money(a.v, 0) + '</text>'; });
-  D1.forEach(function (b) { s += '<rect x="' + (W - R - bw) + '" y="' + b.y.toFixed(1) + '" width="' + bw + '" height="' + b.h.toFixed(1) + '" rx="2" fill="' + colr(b.n, b.ghost) + '"/><text x="' + (W - R + 6) + '" y="' + (b.y + b.h / 2 + 3).toFixed(1) + '" font-size="10" fill="var(--ink)">' + esc(b.n) + '</text><text x="' + (W - R + 6) + '" y="' + (b.y + b.h / 2 + 14).toFixed(1) + '" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + money(b.v, 0) + '</text>'; });
-  return '<section class="chart"><h2>Money flow this month</h2>' + s + '</svg><div class="note">Left: where money came from. Right: where it went. Own transfers are left out.</div></section>';
+  function node(x, left){ // tap a node to see its payments
+    if (x.ghost) return '<g>';
+    var hit = '<rect class="hit" x="' + (left ? 0 : W - R - bw) + '" y="' + (x.y - 3).toFixed(1) + '" width="' + (L + bw) + '" height="' + (Math.max(x.h, 14) + 18).toFixed(1) + '"><title>Show ' + esc(x.n) + ' payments</title></rect>';
+    return (x.cats ? '<g data-x="cats:' + esc(x.cats.join('|')) + '">' : '<g data-cat-filter="' + esc(x.n) + '">') + hit;
+  }
+  S1.forEach(function (a) { s += node(a, true) + '<rect x="' + L + '" y="' + a.y.toFixed(1) + '" width="' + bw + '" height="' + a.h.toFixed(1) + '" rx="2" fill="' + colr(a.n, a.ghost) + '"/><text x="' + (L - 6) + '" y="' + (a.y + a.h / 2 + 3).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--ink)">' + esc(a.n) + '</text><text x="' + (L - 6) + '" y="' + (a.y + a.h / 2 + 14).toFixed(1) + '" text-anchor="end" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + money(a.v, 0) + '</text></g>'; });
+  D1.forEach(function (b) { s += node(b, false) + '<rect x="' + (W - R - bw) + '" y="' + b.y.toFixed(1) + '" width="' + bw + '" height="' + b.h.toFixed(1) + '" rx="2" fill="' + colr(b.n, b.ghost) + '"/><text x="' + (W - R + 6) + '" y="' + (b.y + b.h / 2 + 3).toFixed(1) + '" font-size="10" fill="var(--ink)">' + esc(b.n) + '</text><text x="' + (W - R + 6) + '" y="' + (b.y + b.h / 2 + 14).toFixed(1) + '" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + money(b.v, 0) + '</text></g>'; });
+  return '<section class="chart"><h2>Money flow this month</h2>' + s + '</svg><div class="note">Left: where money came from. Right: where it went. Own transfers are left out. Tap a name to see its payments.</div></section>';
 }
 
 // 9. No-spend streak with a pixel flame.
@@ -1186,7 +1243,7 @@ function mapPanel(rows) {
   var pts = rows.filter(function (r) { return r.type === 'Out' && r.lat !== '' && r.lat !== undefined && r.lat !== null; });
   S.mapPts = pts;
   if (!pts.length) return '<section><h2>Spending map</h2><div class="empty">Pins appear here for Apple Pay payments once your Wallet automation sends your location (two extra fields, lat and lng).</div></section>';
-  return '<section><h2>Spending map</h2><div id="map" class="map"></div><div class="note">' + pts.length + ' Apple Pay payment' + (pts.length > 1 ? 's' : '') + ' with a location this month. Bigger circles are bigger payments.</div></section>';
+  return '<section><h2>Spending map</h2><div id="map" class="map"></div><div class="note">' + pts.length + ' Apple Pay payment' + (pts.length > 1 ? 's' : '') + ' with a location this month. Bigger circles are bigger payments. Tap a circle to see the payment.</div></section>';
 }
 function drawMap() {
   var el = document.getElementById('map'); if (!el || !S.mapPts || !S.mapPts.length || el.closest('section.folded')) return;
@@ -1197,7 +1254,11 @@ function drawMap() {
     S.mapPts.forEach(function (r) {
       var ic = PX[CAT_ICON[r.category] || 'dots'];
       L.circleMarker([r.lat, r.lng], { radius: 5 + Math.sqrt(r.amount) / 2, color: ic.c[0], weight: 2, fillOpacity: 0.45 })
-        .bindPopup('<b>' + esc(r.party || 'Payment') + '</b><br>AED ' + money(r.amount) + '<br>' + esc(r.day) + ' ' + esc(r.hm)).addTo(m);
+        .bindTooltip('<b>' + esc(r.party || 'Payment') + '</b> · AED ' + money(r.amount) + '<br>' + esc(r.day) + ' ' + esc(r.hm))
+        .on('click', function () {
+          var same = S.mapPts.filter(function (o) { return Math.abs(o.lat - r.lat) < 0.0005 && Math.abs(o.lng - r.lng) < 0.0005; }).map(function (o) { return String(o.id); });
+          S.xFilter = 'ids:' + same.join('|'); S.catFilter = null; S.dayFilter = null; render(); showTxs();
+        }).addTo(m);
       b.push([r.lat, r.lng]);
     });
     if (b.length === 1) m.setView(b[0], 14); else m.fitBounds(b, { padding: [24, 24], maxZoom: 15 });
@@ -1228,8 +1289,10 @@ $('body').addEventListener('click', function(e){
   var dy = e.target.closest('[data-day]');
   if (dy){ S.dayFilter = S.dayFilter === dy.dataset.day ? null : dy.dataset.day; render(); if (S.dayFilter) showTxs(); return; }
   var cf = e.target.closest('[data-cat-filter]');
-  if (cf){ var c = cf.getAttribute('data-cat-filter'); S.catFilter = S.catFilter === c ? null : c; render(); if (S.catFilter) showTxs(); return; }
-  if (e.target.closest('#clearAll')){ S.dayFilter = null; S.catFilter = null; S.q = ''; render(); return; }
+  if (cf){ var c = cf.getAttribute('data-cat-filter'); S.catFilter = S.catFilter === c ? null : c; S.xFilter = null; render(); if (S.catFilter) showTxs(); return; }
+  var xf = e.target.closest('[data-x]');
+  if (xf){ var v = xf.getAttribute('data-x'); S.xFilter = S.xFilter === v ? null : v; S.catFilter = null; render(); if (S.xFilter) showTxs(); return; }
+  if (e.target.closest('#clearAll')){ S.dayFilter = null; S.catFilter = null; S.xFilter = null; S.q = ''; render(); return; }
   if (e.target.closest('#editBudgets')) editBudgets();
 });
 $('body').addEventListener('input', function(e){
@@ -1238,7 +1301,7 @@ $('body').addEventListener('input', function(e){
   S.qt = setTimeout(function(){ var l = $('txlist'); if (l) l.innerHTML = txList(); }, 120);
 });
 $('body').addEventListener('keydown', function(e){
-  if (e.key === 'Enter' && e.target.closest && e.target.closest('.ring[data-cat-filter]')) e.target.click();
+  if (e.key === 'Enter' && e.target.closest && e.target.closest('.ring[data-cat-filter],[data-x][tabindex],[data-day][tabindex],[data-goto][tabindex]')) e.target.click();
   if (e.key === 'Escape' && e.target.id === 'q'){ e.target.value = ''; S.q = ''; $('txlist').innerHTML = txList(); }
 });
 // ===================== All time: every month combined =====================
@@ -1610,12 +1673,12 @@ function yearPanel(s, today){
     var key = d.toISOString().slice(0,10), row = (d.getDay() + 6) % 7, v = s.perDay[key] || 0, before = key < s.first;
     if (row === 0 && d.getMonth() !== lastM){ lastM = d.getMonth(); months += '<text x="' + (wk * 12 + 22) + '" y="9" font-size="11" fill="var(--muted)" font-family="DM Mono, monospace">' + d.toLocaleString('en-GB', {month:'short'}) + '</text>'; }
     var lvl = v ? Math.max(1, Math.ceil(4 * v / max)) : 0;
-    sv += '<rect class="yc l' + (before ? 'x' : lvl) + '" style="--k:' + wk + '" x="' + (wk * 12 + 22) + '" y="' + (row * 12 + 14) + '" width="10" height="10" rx="2"><title>' + key + (before ? ' · before tracking' : ' · AED ' + money(v)) + '</title></rect>';
+    sv += '<rect class="yc l' + (before ? 'x' : lvl) + '" style="--k:' + wk + '" x="' + (wk * 12 + 22) + '" y="' + (row * 12 + 14) + '" width="10" height="10" rx="2"' + (v ? ' data-goto="' + key.slice(0, 7) + '" data-goday="' + key + '"' : '') + '><title>' + key + (before ? ' · before tracking' : ' · AED ' + money(v) + ' · tap to see the payments') + '</title></rect>';
     if (row === 6) wk++;
   }
   var W = wk * 12 + 36, lab = ['Mon','','Wed','','Fri','',''].map(function(t, i){ return t ? '<text x="0" y="' + (i * 12 + 23) + '" font-size="9" fill="var(--muted)" font-family="DM Mono, monospace">' + t + '</text>' : ''; }).join('');
   return '<section class="chart"><h2>Your year in pixels</h2><div class="yearx"><svg class="year" viewBox="0 0 ' + W + ' 100" role="img" aria-label="Spending per day over the last year">' + months + lab + sv + '</svg></div>' +
-    '<div class="legend heat-l"><span>Less</span><em class="l0"></em><em class="l1"></em><em class="l2"></em><em class="l3"></em><em class="l4"></em><span>More</span></div></section>';
+    '<div class="legend heat-l"><span>Less</span><em class="l0"></em><em class="l1"></em><em class="l2"></em><em class="l3"></em><em class="l4"></em><span>More · tap a day to see it</span></div></section>';
 }
 
 function placesPanel(s){
@@ -1628,7 +1691,7 @@ function placesPanel(s){
 function bigPanel(s){
   if (!s.big.length) return '';
   return '<section><h2>Biggest payments</h2>' + s.big.slice(0, 6).map(function(r){
-    return '<div class="prow"><span class="ico">' + pixel(r.c, 20) + '</span><span class="pn">' + esc(r.p || r.c) + '<small>' + dLabel(r.d) + ' ' + r.d.slice(0, 4) + ' · ' + esc(r.c) + '</small></span><span class="num">' + money(r.a) + '</span></div>';
+    return '<div class="prow" role="button" tabindex="0" data-goto="' + r.d.slice(0, 7) + '" data-goday="' + r.d + '" data-gox="amt:' + r.a + '" aria-label="Show this payment"><span class="ico">' + pixel(r.c, 20) + '</span><span class="pn">' + esc(r.p || r.c) + '<small>' + dLabel(r.d) + ' ' + r.d.slice(0, 4) + ' · ' + esc(r.c) + '</small></span><span class="num">' + money(r.a) + '</span></div>';
   }).join('') + '</section>';
 }
 
@@ -1741,7 +1804,9 @@ $('app').addEventListener('click', function(e){
 });
 $('body').addEventListener('click', function(e){
   var m = e.target.closest('[data-goto]'); if (!m) return;
-  S.month = m.getAttribute('data-goto'); setMode('month'); window.scrollTo(0, 0);
+  S.dayFilter = null; S.catFilter = null; S.xFilter = null; S.q = '';
+  S.pend = m.getAttribute('data-goday') ? { day: m.getAttribute('data-goday'), x: m.getAttribute('data-gox') || null } : null;
+  S.month = m.getAttribute('data-goto'); setMode('month'); if (!S.pend) window.scrollTo(0, 0);
 });
 $('prev').onclick = function(){ if (S.month) load(shiftMonth(S.month, -1)); };
 $('next').onclick = function(){ if (S.month) load(shiftMonth(S.month, 1)); };
