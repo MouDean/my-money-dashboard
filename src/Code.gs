@@ -1,4 +1,4 @@
-/* My Money - turns bank SMS and Apple Pay taps into a personal money dashboard.
+/* MoneyLoop - turns bank SMS and Apple Pay taps into a personal money dashboard.
    https://github.com/MouDean/my-money-dashboard  (MIT licence)
 
    SETUP: change the two lines below, then follow the README. */
@@ -492,7 +492,7 @@ function doGet(e) {
   if (p.action === 'add') return text_(ingest_(p));
   var t = HtmlService.createTemplateFromFile('Dashboard');
   t.key = p.key;
-  return t.evaluate().setTitle('My Money')
+  return t.evaluate().setTitle('MoneyLoop')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
@@ -750,7 +750,7 @@ function buildOverview() {
   var MS = 'EOMONTH(TODAY(),-1)+1', ME = 'EOMONTH(TODAY(),0)+1';
   function sumifs(kind, from, to) { return '=SUMIFS(' + T + '$E:$E,' + kind + ',' + T + '$B:$B,">="&' + from + ',' + T + '$B:$B,"<"&' + to + ')'; }
 
-  sh.getRange('A1').setValue('My Money overview').setFontSize(18).setFontWeight('bold');
+  sh.getRange('A1').setValue('MoneyLoop overview').setFontSize(18).setFontWeight('bold');
   sh.getRange('A2').setValue('Updates by itself as transactions arrive. Amounts in AED; transfers between your own accounts are left out.').setFontColor('#5D6B63');
 
   // Key figures
@@ -998,9 +998,9 @@ function reportHtml_(mk, rows, preview) {
   if (!cur.nOut && !cur.inn) h += '<tr><td style="padding-top:18px;font-size:15px;color:' + muted + '">Nothing was recorded this month.</td></tr>';
   var url = ''; try { url = ScriptApp.getService().getUrl(); } catch (e) {}
   if (url) h += '<tr><td style="padding-top:26px"><a href="' + esc_(url + '?key=' + key_()) + '" style="display:inline-block;background:' + blue + ';color:#fff;text-decoration:none;padding:11px 18px;border-radius:10px;font-weight:600;font-size:14px">Open dashboard</a></td></tr>';
-  h += '<tr><td style="padding-top:18px;font-size:11px;color:' + muted + '">AED only. Transfers between your own accounts are left out. Sent by your My Money sheet' + (preview ? '; the full report arrives on the 1st of each month.' : '.') + '</td></tr>';
+  h += '<tr><td style="padding-top:18px;font-size:11px;color:' + muted + '">AED only. Transfers between your own accounts are left out. Sent by your MoneyLoop sheet' + (preview ? '; the full report arrives on the 1st of each month.' : '.') + '</td></tr>';
   h += '</table></td></tr></table></div>';
-  var subject = (preview ? 'My Money preview · ' : 'My Money · ') + monthName_(mk) + ': spent AED ' + n0(cur.out) + (cur.inn ? ', in AED ' + n0(cur.inn) : '');
+  var subject = (preview ? 'MoneyLoop preview · ' : 'MoneyLoop · ') + monthName_(mk) + ': spent AED ' + n0(cur.out) + (cur.inn ? ', in AED ' + n0(cur.inn) : '');
   var plain = subject + '\nMoney in AED ' + fmt_(cur.inn) + ', out AED ' + fmt_(cur.out) + ', net AED ' + fmt_(net) + '\n' +
     ck.slice(0, 8).map(function (c) { return c + ': ' + fmt_(cur.cats[c]); }).join('\n');
   return { subject: subject, html: h, text: plain };
@@ -1009,7 +1009,7 @@ function reportHtml_(mk, rows, preview) {
 function sendReport_(mk, preview) {
   var rows = readRows_(ss_().getSheetByName(SHEET_TX)), r = reportHtml_(mk, rows, preview);
   var to = Session.getEffectiveUser().getEmail();
-  MailApp.sendEmail({ to: to, subject: r.subject, body: r.text, htmlBody: r.html, name: 'My Money' });
+  MailApp.sendEmail({ to: to, subject: r.subject, body: r.text, htmlBody: r.html, name: 'MoneyLoop' });
   return 'Sent "' + r.subject + '" to ' + to;
 }
 

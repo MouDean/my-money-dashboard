@@ -89,7 +89,7 @@ Since payday: spent AED 2,140.00 of 15,000.00 · AED 590.00/day for 22 days
 ## 4. Dashboard on the Home Screen
 
 1. Open your **Dashboard link** in Safari.
-2. Tap **Share → Add to Home Screen**, name it **My Money**.
+2. Tap **Share → Add to Home Screen**, name it **MoneyLoop**.
 
 To use a custom icon, create a shortcut with the action **Open URLs** (your dashboard link), then **Share → Add to Home Screen** and tap the icon to choose a photo — for example [`docs/screenshots/app-icon.png`](screenshots/app-icon.png).
 

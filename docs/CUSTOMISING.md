@@ -70,7 +70,8 @@ Messages the reader doesn't understand are saved in the **Review** tab with the 
 
 ## Look and feel
 
-- Colours are CSS variables at the top of `Dashboard.html` (`--accent`, `--in`, `--out`, `--bg` …), with separate values for dark mode.
+- Colours, corner radii, shadows and fonts are CSS variables at the top of `Dashboard.html` (`--brand`, `--accent`, `--in`, `--out`, `--bg`, `--hero`, `--radius-xl` …), with separate colour values for dark mode. `--brand` is the lime used for buttons and selection; the `--hero-*` set colours the big first card; the `--dock-*` set colours the bottom dock and side rail.
+- The logo files (mark, lockups, app icon) are in `docs/brand/`.
 - Pixel icons are 10×10 grids in the `PX` object; `CAT_ICON` maps categories to icons.
 - The savings mountain's look per month: under 0% kept is bare earth, 0–20% green grass, 20–40% pines, 40%+ sakura (`mtTier` in `Dashboard.html`).
 - The All time **mood piggy** is drawn on a 64×48 canvas by `MoodPig` in `Dashboard.html` (`sceneCrack` for a month where more went out, `scenePropeller` for one where you kept more). The fire is a small pixel-fire simulation (`Fire`).

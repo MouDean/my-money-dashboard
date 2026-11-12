@@ -1,4 +1,4 @@
-# My Money
+# MoneyLoop
 
 A personal money dashboard for iPhone that fills itself in. Every bank SMS and every Apple Pay tap is sent to your own Google Sheet, and a pixel-styled dashboard shows where your money went, what is left until payday, and how your savings grow over time.
 
@@ -78,6 +78,10 @@ iPhones don't let other apps read notifications, so the trick is to have your ba
 - **One secret key protects everything.** The web app is reachable by your phone, so every request must carry your key. Use a long random key, never share your dashboard link, and change the key if a link leaks (see [Setup](docs/SETUP.md#changing-your-key)).
 - **No bank passwords or card numbers are ever used.** Only the text of alerts you already receive, and only the last digits of a card as written by your bank.
 - The repository contains no personal data. Do not commit your own copy of `Code.gs` once you have put your key in it.
+
+## Design
+
+MoneyLoop's look (soft cards, one loud hero card, loop-lime accents, pixel icons) is documented as a design system; the logo files are in [`docs/brand/`](docs/brand). The earlier *My Money* version of the dashboard is kept in [`backup/my-money-original/`](backup/my-money-original) with steps to switch back.
 
 ## Project layout
 

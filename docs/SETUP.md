@@ -19,7 +19,7 @@ About 15 minutes on a computer, then 10 minutes on your iPhone. You only do this
 ## 1. Create the Google Sheet
 
 1. Go to [sheets.new](https://sheets.new) while signed in to your Google account.
-2. Name it **My Money** (any name works).
+2. Name it **MoneyLoop** (any name works).
 
 You don't need to add any tabs or columns — the script creates them.
 
@@ -29,7 +29,7 @@ You don't need to add any tabs or columns — the script creates them.
 2. Delete everything in `Code.gs` and paste the full contents of [`src/Code.gs`](../src/Code.gs).
 3. Click the **+** next to *Files* → **HTML**, name it exactly `Dashboard` (Apps Script adds `.html`).
 4. Delete the sample content and paste the full contents of [`src/Dashboard.html`](../src/Dashboard.html).
-5. Click the project name (*Untitled project*) and rename it **My Money**.
+5. Click the project name (*Untitled project*) and rename it **MoneyLoop**.
 6. Press **Ctrl+S** / **Cmd+S** to save.
 
 > Because you opened Apps Script from the sheet, the script is linked to it and `SHEET_ID` can stay empty. If you create the script separately at script.google.com, put your sheet's ID (the long code in its URL between `/d/` and `/edit`) in `SHEET_ID`.
@@ -51,7 +51,7 @@ Save again.
 ## 4. Run setup once
 
 1. In the toolbar, choose **setup** from the function menu next to **Run**, then click **Run**.
-2. Google asks for permission. Click **Review permissions**, choose your account, then **Advanced → Go to My Money (unsafe) → Allow**.
+2. Google asks for permission. Click **Review permissions**, choose your account, then **Advanced → Go to MoneyLoop (unsafe) → Allow**.
    The warning appears for every personal script that Google hasn't reviewed. It is your own code running in your own account.
 3. Back in the sheet you now have the tabs **Transactions**, **Categories**, **Settings** and **Review**. An **Overview** tab with charts and **Budgets** tab are added the first time you open the dashboard or set a budget.
 
@@ -60,7 +60,7 @@ Save again.
 1. Click **Deploy → New deployment**.
 2. Click the gear next to *Select type* and choose **Web app**.
 3. Set:
-   - **Description:** `My Money`
+   - **Description:** `MoneyLoop`
    - **Execute as:** `Me`
    - **Who has access:** `Anyone`
 4. Click **Deploy** and authorise again if asked.
