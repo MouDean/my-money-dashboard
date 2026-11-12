@@ -200,6 +200,10 @@ section.folded .sec-head > :not(h2):not(.fold){display:none}
 .heat .l2,.heat-l .l2{background:color-mix(in srgb,var(--out) 45%,var(--track))}
 .heat .l3,.heat-l .l3{background:color-mix(in srgb,var(--out) 70%,var(--track));color:#fff}
 .heat .l4,.heat-l .l4{background:var(--out);color:#fff}
+.heat .g1,.heat-l .g1{background:color-mix(in srgb,var(--in) 22%,var(--track))}
+.heat .g2,.heat-l .g2{background:color-mix(in srgb,var(--in) 45%,var(--track))}
+.heat .g3,.heat-l .g3{background:color-mix(in srgb,var(--in) 70%,var(--track));color:var(--bg)}
+.heat .g4,.heat-l .g4{background:var(--in);color:var(--bg)}
 .heat .now{box-shadow:inset 0 0 0 2px var(--accent)}
 .heat .sel{box-shadow:inset 0 0 0 2px var(--ink)}
 .heat .fut{opacity:.35;cursor:default}
@@ -714,7 +718,7 @@ function render(){
   g('g-side', side);
   g('g-plan', planPanel(cats, d.budgets, d.plan, out));
   g('g-rings', ringsPanel(cats, d.budgets));
-  g('g-heat', heatmap(perDay, d.month, d.today));
+  g('g-heat', heatmap(perDay, inDay, d.month, d.today));
   g('g-sankey', sankey(aed));
   g('g-map', mapPanel(rows));
   g('g-flow', flowChart(perDay, inDay, d.month, d.today));
@@ -1035,20 +1039,26 @@ function buddySVG(st) {
 }
 
 // 2. Calendar heatmap of daily spending.
-function heatmap(perDay, month, today) {
+function heatmap(perDay, inDay, month, today) {
+  // Money heat map: each day's net. Red when more went out, green when more came in; brighter = bigger.
+  // Red and green are scaled separately so a salary day doesn't wash out the spending days.
   var p = month.split('-'), days = new Date(+p[0], +p[1], 0).getDate();
-  var offset = (new Date(+p[0], +p[1] - 1, 1).getDay() + 6) % 7, max = 0, k, i;
-  for (k in perDay) if (perDay[k] > max) max = perDay[k];
+  var offset = (new Date(+p[0], +p[1] - 1, 1).getDay() + 6) % 7, maxOut = 0, maxIn = 0, net = {}, k, i;
+  for (i = 1; i <= days; i++){ k = month + '-' + ('0' + i).slice(-2); var n = (inDay[k] || 0) - (perDay[k] || 0); net[k] = n; if (n < maxOut) maxOut = n; if (n > maxIn) maxIn = n; }
   var h = '<div class="heat-h">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</div><div class="heat">';
   for (i = 0; i < offset; i++) h += '<span></span>';
+  var short = function(v){ v = Math.abs(v); return v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(v)); };
   for (i = 1; i <= days; i++) {
     k = month + '-' + ('0' + i).slice(-2);
-    var v = perDay[k] || 0, lvl = v ? Math.max(1, Math.ceil(4 * v / max)) : 0, fut = k > today;
-    h += '<button class="l' + lvl + (k === today ? ' now' : '') + (fut ? ' fut' : '') + (S.dayFilter === k ? ' sel' : '') + '" data-day="' + k + '" style="--d:' + i + '" ' +
-      (fut ? 'disabled ' : '') + 'aria-label="' + i + ': AED ' + money(v) + '"><i>' + i + '</i>' + (v ? '<b class="num">' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v)) + '</b>' : '') + '</button>';
+    var v = net[k], fut = k > today, cls = 'l0';
+    if (v < 0) cls = 'l' + Math.max(1, Math.ceil(4 * v / maxOut)); else if (v > 0) cls = 'g' + Math.max(1, Math.ceil(4 * v / maxIn));
+    var lab = i + ': ' + (v > 0 ? 'AED ' + money(v) + ' more came in' : v < 0 ? 'AED ' + money(-v) + ' more went out' : 'no change') + (inDay[k] ? ' (in ' + money(inDay[k]) + ', out ' + money(perDay[k] || 0) + ')' : '');
+    h += '<button class="' + cls + (k === today ? ' now' : '') + (fut ? ' fut' : '') + (S.dayFilter === k ? ' sel' : '') + '" data-day="' + k + '" style="--d:' + i + '" ' +
+      (fut ? 'disabled ' : '') + 'aria-label="' + lab + '"><i>' + i + '</i>' + (v ? '<b class="num">' + (v > 0 ? '+' : '') + short(v) + '</b>' : '') + '</button>';
   }
-  h += '</div><div class="legend heat-l"><span>Less</span><em class="l0"></em><em class="l1"></em><em class="l2"></em><em class="l3"></em><em class="l4"></em><span>More · tap a day to see its payments</span></div>';
-  return '<section><h2>Spending calendar</h2>' + h + '</section>';
+  h += '</div><div class="legend heat-l"><span>Spent more</span><em class="l4"></em><em class="l2"></em><em class="l0"></em><em class="g2"></em><em class="g4"></em><span>Came in more</span></div>' +
+    '<div class="sub" style="margin-top:6px">Each day shows money in minus money out. Tap a day to see its payments.</div>';
+  return '<section><h2>Money heat map</h2>' + h + '</section>';
 }
 
 // 3. Budget rings.
@@ -1685,13 +1695,13 @@ function renderAll(){
 
 // Collapsible panels: every section with a title gets a fold button; the choice is remembered per panel.
 var FOLD_DEFAULT = {
-  month: ['Spending calendar', 'Cash flow this month', 'Spending per day', 'Money flow this month', 'Last six months', 'Spending map', 'Money in', 'Account balances'],
+  month: ['Money heat map', 'Cash flow this month', 'Spending per day', 'Money flow this month', 'Last six months', 'Spending map', 'Money in', 'Account balances'],
   all: ['Cash flow since you started', 'Spending mix by month', 'Categories, all time', 'Money in, by source', 'People', 'When you spend', 'Your year in pixels', 'Top places, all time', 'Biggest payments', 'Spending map', 'Money flow, all time']
 };
 var FOLD_SVG = '<svg width="12" height="12" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 1h1v1H0zM6 1h1v1H6zM1 2h1v1H1zM5 2h1v1H5zM2 3h1v1H2zM4 3h1v1H4zM3 4h1v1H3z"/></svg>';
 function foldStore(v){ try { if (v) localStorage.setItem('mm_fold', JSON.stringify(v)); else return JSON.parse(localStorage.getItem('mm_fold') || '{}'); } catch (e) { S.foldMem = v || S.foldMem || {}; return S.foldMem || {}; } }
 function foldKey(sec){ var h = sec.querySelector(':scope > h2, :scope > .split > h2'); return h ? (S.mode === 'all' ? 'all' : 'month') + ':' + String(h.firstChild && h.firstChild.textContent || h.textContent).trim() : null; }
-function isFolded(key){ var st = foldStore(); if (key in st) return !!st[key]; var p = key.split(':'); return FOLD_DEFAULT[p[0]].indexOf(p.slice(1).join(':')) >= 0; }
+function isFolded(key){ var st = foldStore(); if (key === 'month:Money heat map' && !(key in st) && ('month:Spending calendar' in st)) st[key] = st['month:Spending calendar']; if (key in st) return !!st[key]; var p = key.split(':'); return FOLD_DEFAULT[p[0]].indexOf(p.slice(1).join(':')) >= 0; }
 function setFold(sec, on){
   sec.classList.toggle('folded', on);
   var b = sec.querySelector('.fold'); if (b) { b.setAttribute('aria-expanded', on ? 'false' : 'true'); b.setAttribute('aria-label', (on ? 'Expand ' : 'Collapse ') + (sec.dataset.fold || '').split(':').slice(1).join(':')); }
