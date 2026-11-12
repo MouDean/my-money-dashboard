@@ -47,7 +47,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .hero{display:flex;flex-direction:column;gap:6px}
 .hero .big{font-size:42px;font-weight:500;line-height:1.05}
 .hero .big small{font-size:16px;color:var(--muted);margin-right:6px;font-family:var(--f-ui)}
-.flows{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.flows{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.flows.two{grid-template-columns:repeat(2,1fr)}
 .flow{min-width:0;display:flex;flex-direction:column;gap:4px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .sec-head h2{cursor:pointer;flex:1;-webkit-user-select:none;user-select:none}
@@ -1724,9 +1724,8 @@ function renderAll(){
     '<div class="big num" style="color:' + (s.net < 0 ? 'var(--out)' : 'var(--ink)') + '"><small>AED</small>' + (s.net < 0 ? '−' : '') + (S.fresh ? cnt(Math.abs(s.net)) : money(Math.abs(s.net))) + '</div>' +
     '<div class="sub">' + (s.rate == null ? 'No money in recorded yet' : (s.rate >= 0 ? Math.round(s.rate) + '% of money in kept' : 'Spent more than came in')) + ' · ' + s.nMonths + ' month' + (s.nMonths > 1 ? 's' : '') + ' tracked</div></div>' +
     '<div class="pig">' + (s.out !== s.inn ? '<canvas class="mood" id="moodPig" width="64" height="48" data-mood="' + (s.out > s.inn ? 'bad' : 'good') + '" role="img" aria-label="' + (s.out > s.inn ? 'Cracked piggy bank running from flames, coins leaking: more went out than came in' : 'Piggy bank flying with a propeller, coins dropping in: more came in than went out') + '"></canvas>' : piggySVG(0)) + '</div></div>' +
-    '<div class="flows"><div class="flow in">' + pxbar(s.inn, Math.max(s.inn, s.out, 1), 'var(--in)') + '<div class="eyebrow">Total in</div><div class="v num">' + money(s.inn, 0) + '</div></div>' +
-    '<div class="flow out">' + pxbar(s.out, Math.max(s.inn, s.out, 1), 'var(--out)') + '<div class="eyebrow">Total out</div><div class="v num">' + money(s.out, 0) + '</div></div>' +
-    '<div class="flow">' + pxbar(s.avgOut, Math.max(s.inn, s.out, 1), 'var(--accent)') + '<div class="eyebrow">Avg month</div><div class="v num">' + money(s.avgOut, 0) + '</div></div></div>' +
+    '<div class="flows two"><div class="flow in">' + pxbar(s.inn, Math.max(s.inn, s.out, 1), 'var(--in)') + '<div class="eyebrow">Total in</div><div class="v num">' + money(s.inn, 0) + '</div></div>' +
+    '<div class="flow out">' + pxbar(s.out, Math.max(s.inn, s.out, 1), 'var(--out)') + '<div class="eyebrow">Total out</div><div class="v num">' + money(s.out, 0) + '</div></div></div>' +
     (s.nMonths < 3 ? '<div class="note2">' + pixel('Star', 16) + ' Tracking started ' + since + '. Every new month adds to these charts.</div>' : '') + '</section>');
   g('g-ins', insightsPanel(s, A));
   g('g-tower', towerPanel(s));
