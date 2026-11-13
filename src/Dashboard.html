@@ -120,7 +120,7 @@ section.folded .sec-head > :not(h2):not(.fold){display:none}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px max(16px,env(safe-area-inset-left,0px)) calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;flex-direction:column;gap:12px}
 .sheet h3{margin:0;font-size:18px}
 .sheet label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
-.sheet select,.sheet input[type=text],.sheet input[type=number]{font:16px var(--f-ui);padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.sheet select,.sheet input[type=text],.sheet input[type=number],.sheet input[type=date]{font:16px var(--f-ui);padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .sheet .row{display:flex;gap:8px;flex-wrap:wrap}
 .sheet .check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:15px}
 .btn{padding:11px 14px;border-radius:10px;border:1px solid var(--line);font-weight:600}
@@ -679,15 +679,24 @@ function mName(m){ var p = m.split('-'); return new Date(+p[0], +p[1]-1, 1).toLo
 function shiftMonth(m, k){ var p = m.split('-'), d = new Date(+p[0], +p[1]-1+k, 1); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2); }
 function toast(t){ var e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(function(){ e.remove(); }, 2200); }
 
-function load(month){
-  $('mlabel').textContent = month ? mName(month) : 'Loading…';
+// quiet: refresh in place (coming back to the app) without replaying the animations or jumping the page.
+function load(month, quiet){
+  var seq = S.seq = (S.seq || 0) + 1;
+  S.want = month || null; S.loadedAt = Date.now();
+  if (!quiet) $('mlabel').textContent = month ? mName(month) : 'Loading…';
   google.script.run.withSuccessHandler(function(d){
+      if (seq !== S.seq) return; // a newer request is on its way
+      S.want = null;
       if (d.month !== S.month){ S.dayFilter = null; S.catFilter = null; S.xFilter = null; S.q = ''; }
-      S.data = d; S.month = d.month; markNew(d.rows); if (S.mode === 'all') return; S.fresh = true; render(); S.fresh = false;
+      var y0 = window.scrollY, same = quiet && S.data && JSON.stringify(S.data) === JSON.stringify(d);
+      S.data = d; S.month = d.month; markNew(d.rows); if (S.mode === 'all' || same) return;
+      if (quiet && hasOpenInput()) return; // don't wipe what is being typed; the next refresh catches up
+      S.fresh = !quiet; render(); S.fresh = false; if (quiet) window.scrollTo(0, y0);
       if (S.pend){ S.dayFilter = S.pend.day; S.xFilter = S.pend.x; S.pend = null; render(); showTxs(); } })
-    .withFailureHandler(function(e){ $('body').innerHTML = '<div class="warn">Could not load: ' + esc(e.message) + '</div>'; })
+    .withFailureHandler(function(e){ if (seq !== S.seq) return; S.want = null; if (quiet) return; $('body').innerHTML = '<div class="warn">Could not load: ' + esc(e.message) + '</div>'; })
     .getData(KEY, month || null);
 }
+function hasOpenInput(){ var a = document.activeElement; return !!$('modal').innerHTML || !!(a && a.id === 'q' && a.value); }
 
 // New since last visit: remembered per browser, highlighted once.
 function markNew(rows){
@@ -913,7 +922,7 @@ function flowChart(perDay, inDay, month, today){
   [1, 10, 20, days].forEach(function(dd){ s += '<text x="' + x(dd).toFixed(1) + '" y="' + (H - 5) + '" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="DM Mono, monospace">' + dd + '</text>'; });
   var sw = (W - L - R) / Math.max(1, days - 1);
   for (i = 1; i <= last; i++){ var kk = month + '-' + ('0'+i).slice(-2), sel = S.dayFilter === kk;
-    if (sel) s += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + T + '" y2="' + y(0) + '" stroke="var(--accent)" stroke-width="1.5"/><circle cx="' + x(i) + '" cy="' + y(cin[i-1]) + '" r="3.5" fill="var(--in)" stroke="var(--card)"/><circle cx="' + x(i) + '" cy="' + y(cout[i-1]) + '" r="3.5" fill="var(--out)" stroke="var(--card)"/>';
+    if (sel) s += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + T + '" y2="' + y(0) + '" stroke="var(--accent)" stroke-width="1.5"/><circle cx="' + x(i) + '" cy="' + y(cin[i-1]) + '" r="3.5" fill="var(--in)" stroke="var(--surface)"/><circle cx="' + x(i) + '" cy="' + y(cout[i-1]) + '" r="3.5" fill="var(--out)" stroke="var(--surface)"/>';
     s += '<rect class="hit' + (sel ? ' sel' : '') + '" data-day="' + kk + '" x="' + (x(i) - sw / 2).toFixed(1) + '" y="' + T + '" width="' + sw.toFixed(1) + '" height="' + (y(0) - T) + '"><title>' + dLabel(kk) + ': in ' + money(inDay[kk] || 0) + ', out ' + money(perDay[kk] || 0) + '</title></rect>'; }
   s += '</svg>';
   return '<section class="chart"><h2>Cash flow this month</h2>' + s +
@@ -988,7 +997,7 @@ function editTx(id){
   var opts = S.data.categories.map(function(c){ return '<option' + (c === r.category ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
   openSheet('<h3>' + esc(r.party || 'Transaction') + '</h3><div class="num">' + esc(r.currency) + ' ' + money(r.amount) + ' · ' + esc(r.bank) + ' ' + esc(r.account) + ' · ' + esc(r.day) + ' ' + esc(r.hm) + '</div>' +
     '<label for="ecat">Category<select id="ecat">' + opts + '</select></label>' +
-    (r.party ? '<label class="check"><input type="checkbox" id="elearn" checked> Always use this category for ' + esc(r.party.split(' ').slice(0,2).join(' ')) + '</label>' : '') +
+    (r.party && r.type !== 'Own' ? '<label class="check"><input type="checkbox" id="elearn" checked> Always use this category for ' + esc(r.party) + ' (earlier payments too)</label>' : '') +
     '<label class="check"><input type="checkbox" id="eown"' + (r.type === 'Own' ? ' checked' : '') + '> Between my own accounts (not counted)</label>' +
     '<div class="row"><button class="btn primary" id="esave">Save</button><button class="btn" id="ecancel">Cancel</button><button class="btn danger" id="edel" style="margin-left:auto">Remove</button></div>');
   $('ecancel').onclick = closeSheet;
@@ -997,11 +1006,14 @@ function editTx(id){
     if (own && r.type !== 'Own') ch.type = 'Own';
     if (!own && r.type === 'Own') ch.type = r.flow === 'in' ? 'In' : 'Out';
     this.disabled = true;
-    google.script.run.withSuccessHandler(function(){ closeSheet(); toast('Saved'); load(S.month); })
-      .withFailureHandler(function(e){ toast(e.message); }).updateTx(KEY, id, ch);
+    var btn = this;
+    google.script.run.withSuccessHandler(function(m){ closeSheet(); toast(/moved/.test(m) ? m.replace(/^Updated, and /, 'Saved · ') : 'Saved'); load(S.month); })
+      .withFailureHandler(function(e){ btn.disabled = false; toast(e.message); }).updateTx(KEY, id, ch);
   };
   $('edel').onclick = function(){
-    if (this.dataset.sure){ google.script.run.withSuccessHandler(function(){ closeSheet(); toast('Removed'); load(S.month); }).updateTx(KEY, id, { remove: true }); }
+    if (this.dataset.sure){ this.disabled = true; var btn = this;
+      google.script.run.withSuccessHandler(function(){ closeSheet(); toast('Removed'); load(S.month); })
+        .withFailureHandler(function(e){ btn.disabled = false; toast(e.message); }).updateTx(KEY, id, { remove: true }); }
     else { this.dataset.sure = 1; this.textContent = 'Tap again to remove'; }
   };
 }
@@ -1012,6 +1024,7 @@ function addCash(){
     '<div class="seg" role="group"><button id="tout" aria-pressed="true">Money out</button><button id="tin" aria-pressed="false">Money in</button></div>' +
     '<label for="aamt">Amount (AED)<input type="number" id="aamt" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>' +
     '<label for="aparty">What or who<input type="text" id="aparty" placeholder="e.g. Barber, Cafeteria"></label>' +
+    '<label for="adate">Day<input type="date" id="adate" value="' + (S.data ? S.data.today : '') + '" max="' + (S.data ? S.data.today : '') + '"></label>' +
     '<label for="acat">Category<select id="acat"><option value="">Pick automatically</option>' + opts + '</select></label>' +
     '<div class="row"><button class="btn primary" id="asave">Add</button><button class="btn" id="acancel">Cancel</button></div>');
   var type = 'Out';
@@ -1021,10 +1034,10 @@ function addCash(){
   $('asave').onclick = function(){
     var a = parseFloat($('aamt').value);
     if (!(a > 0)){ toast('Enter an amount'); return; }
-    this.disabled = true;
+    this.disabled = true; var btn = this;
     google.script.run.withSuccessHandler(function(m){ closeSheet(); toast(m.replace(/^Saved: /, 'Added: ')); load(S.month); })
-      .withFailureHandler(function(e){ toast(e.message); })
-      .addManual(KEY, { type: type, amount: a, party: $('aparty').value, category: $('acat').value });
+      .withFailureHandler(function(e){ btn.disabled = false; toast(e.message); })
+      .addManual(KEY, { type: type, amount: a, party: $('aparty').value, category: $('acat').value, date: $('adate').value });
   };
   setTimeout(function(){ $('aamt').focus(); }, 50);
 }
@@ -1319,10 +1332,15 @@ $('body').addEventListener('keydown', function(e){
   if (e.key === 'Escape' && e.target.id === 'q'){ e.target.value = ''; S.q = ''; $('txlist').innerHTML = txList(); }
 });
 // ===================== All time: every month combined =====================
-function loadAll(){
+function loadAll(quiet){
+  var seq = S.seq = (S.seq || 0) + 1; S.loadedAt = Date.now();
   $('mlabel').textContent = 'All time';
-  google.script.run.withSuccessHandler(function(a){ S.all = a; S.fresh = true; renderAll(); S.fresh = false; })
-    .withFailureHandler(function(e){ $('body').innerHTML = '<div class="warn">Could not load: ' + esc(e.message) + '</div>'; })
+  google.script.run.withSuccessHandler(function(a){
+      if (seq !== S.seq || S.mode !== 'all') return;
+      var same = quiet && S.all && JSON.stringify(S.all) === JSON.stringify(a), y0 = window.scrollY;
+      S.all = a; if (same) return;
+      S.fresh = !quiet; renderAll(); S.fresh = false; if (quiet) window.scrollTo(0, y0); })
+    .withFailureHandler(function(e){ if (seq !== S.seq || quiet) return; $('body').innerHTML = '<div class="warn">Could not load: ' + esc(e.message) + '</div>'; })
     .getAllData(KEY);
 }
 function setMode(m){
@@ -1901,8 +1919,8 @@ $('body').addEventListener('click', function(e){
   S.pend = m.getAttribute('data-goday') ? { day: m.getAttribute('data-goday'), x: m.getAttribute('data-gox') || null } : null;
   S.month = m.getAttribute('data-goto'); setMode('month'); if (!S.pend) window.scrollTo(0, 0);
 });
-$('prev').onclick = function(){ if (S.month) load(shiftMonth(S.month, -1)); };
-$('next').onclick = function(){ if (S.month) load(shiftMonth(S.month, 1)); };
+$('prev').onclick = function(){ var m = S.want || S.month; if (m) load(shiftMonth(m, -1)); };
+$('next').onclick = function(){ var m = S.want || S.month; if (m && (!S.data || shiftMonth(m, 1) <= S.data.today.slice(0,7))) load(shiftMonth(m, 1)); };
 // Light / dark switch: one tap flips between light and dark. Remembered on this device; first visit follows the phone.
 var THEME_IC = {
   auto: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h3v1H2zM1 1h1v1H1zM0 2h1v3H0zM1 5h1v1H1zM2 6h3v1H2zM5 5h1v1H5zM6 2h1v3H6zM5 1h1v1H5zM3 1h2v5H3zM5 2h1v3H5z"/></svg>',
@@ -1928,7 +1946,10 @@ window.addEventListener('resize', function(){
     if (l !== S.layout){ if (S.mode === 'all' && S.all) renderAll(); else if (S.mode !== 'all' && S.data) render(); }
   }, 150);
 });
-document.addEventListener('visibilitychange', function(){ if (document.hidden) return; if (S.mode === 'all') loadAll(); else if (S.month) load(S.month); });
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden || Date.now() - (S.loadedAt || 0) < 60000) return;
+  if (S.mode === 'all') loadAll(true); else if (S.month) load(S.month, true);
+});
 var startMode = 'month'; try { startMode = localStorage.getItem('mm_mode') === 'all' ? 'all' : 'month'; } catch (e) {}
 if (startMode === 'all') setMode('all'); else { S.mode = 'month'; load(null); }
 </script>

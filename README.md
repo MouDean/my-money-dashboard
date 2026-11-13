@@ -30,7 +30,7 @@ No app to install, no bank logins, no servers to run. It is a Google Sheet, a sm
 - **Budget plan**: your salary split into fixed bills, everyday, lifestyle and savings as a pixel strip, with what you have spent in each group and whether you are on track to save.
 - Pixel buddy that reacts to how today is going, a no-spend streak flame, and a **pay jar** that fills with every bit of money that comes in (salary, transfers, refunds, cash) and drains as you spend.
 - Budget rings per category, a **money heat map** calendar (red days when more went out, green when more came in; tap a day), cash-flow chart, animated money-flow diagram, spending map of Apple Pay payments, six-month trend.
-- Tap a category to filter, search any transaction, tap a row to recategorise or mark it as an own transfer, add cash by hand.
+- Tap a category to filter, search any transaction, tap a row to recategorise or mark it as an own transfer, add cash by hand (today or an earlier day).
 
 **All time view**
 - A **mood piggy bank** drawn frame by frame: when more went out than came in, a cracked piggy runs from simulated pixel flames while coins leak out; when you kept more, it flies with a propeller while coins drop into its slot.

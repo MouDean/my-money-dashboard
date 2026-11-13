@@ -455,7 +455,7 @@ function period_(rows) {
     if (dayKey_(lp.getTime()) > td) lp = new Date(Date.UTC(+tp[0], +tp[1] - 2, pd));
     var from = lp.toISOString().slice(0, 10), inn = 0, out = 0, last = 0;
     rows.forEach(function (r) {
-      if (r.currency !== 'AED' || dayKey_(r.time) < from) return;
+      if (r.currency !== 'AED' || r.day < from) return;
       if (r.type === 'In') { inn += r.amount; if (r.time > last) last = r.time; } else if (r.type === 'Out') out += r.amount;
     });
     return { none: true, payday: pd, from: from, inn: inn, spent: out, lastIn: last ? dayKey_(last) : '', today: td };
@@ -468,7 +468,7 @@ function period_(rows) {
   var salary = 0, spent = 0, otherIn = 0, n = 0;
   rows.forEach(function (r) {
     if (r.currency !== 'AED') return;
-    var k = dayKey_(r.time); if (k < start) return;
+    var k = r.day; if (k < start) return;
     if (r.type === 'In' && r.category === 'Salary') salary += r.amount;
     else if (r.type === 'In') otherIn += r.amount;
     else if (r.type === 'Out') { spent += r.amount; n++; }
@@ -512,7 +512,9 @@ function readRows_(sh, last) {
   var vals = sh.getRange(start, 1, sh.getLastRow() - start + 1, HEAD.length).getValues();
   var own = owners_();
   return vals.map(function (v, i) {
-    return { row: start + i, id: String(v[0]), time: v[1] instanceof Date ? v[1].getTime() : new Date(v[1]).getTime(),
+    var time = v[1] instanceof Date ? v[1].getTime() : new Date(v[1]).getTime();
+    // day is worked out once per row here: formatting dates is the slowest step when the sheet grows.
+    return { row: start + i, id: String(v[0]), time: time, day: dayKey_(time),
       type: v[2], flow: v[3], amount: Number(v[4]), currency: v[5], bank: v[6], account: v[7], party: v[8],
       category: v[9], balance: v[10], source: v[11], kind: v[12], pair: String(v[13] || ''), text: v[14],
       toOwner: v[2] === 'Info' && (isOwner(v[8], own) || v[8] === 'Card Payment'), merged: /\+/.test(v[11]),
@@ -553,6 +555,7 @@ function ingest_(b) {
       amount: Math.round(parseFloat(b.amount) * 100) / 100, currency: 'AED', bank: b.bank || 'Cash', account: '',
       party: title_(b.party || ''), balance: '', category: b.category || '' };
     if (!(tx.amount > 0)) return 'Skipped: amount missing';
+    tx.when = manualTime_(b.date);
   } else {
     tx = parseMessage(b.text, b.sender, owners_());
     if (tx.ignore) return 'Ignored: ' + tx.ignore;
@@ -565,7 +568,7 @@ function ingest_(b) {
   // "as=own" marks a transfer between my own accounts (used for links I tap by hand).
   if (String(b.as || '').toLowerCase() === 'own' && tx.type !== 'Info') { tx.type = 'Own'; tx.category = 'Between my accounts'; }
   tx.source = src;
-  tx.time = Date.now();
+  tx.time = tx.when || Date.now(); delete tx.when;
   tx.id = Utilities.getUuid().slice(0, 8);
 
   var lock = LockService.getScriptLock();
@@ -598,6 +601,7 @@ function ingest_(b) {
         sh.getRange(r.row, COL.Pair + 1).setValue(tx.id);
       });
     }
+    if (!tx.category && tx.type !== 'Own') tx.category = merchantCategory_(tx);
     if (!tx.category || tx.category === 'Between my accounts' && tx.type !== 'Own') tx.category = categorize(tx, rules_());
     if (tx.type === 'Own') tx.category = 'Between my accounts';
     sh.appendRow(toRow_(tx));
@@ -615,7 +619,7 @@ function dailySummary_() {
   var tOut = 0, tIn = 0, nOut = 0, nIn = 0, mOut = 0, mIn = 0, cats = {}, other = 0;
   rows.forEach(function (r) {
     if (r.type !== 'Out' && r.type !== 'In') return;
-    var dk = dayKey_(r.time);
+    var dk = r.day;
     if (r.currency !== 'AED') { if (dk === today) other++; return; }
     if (dk.slice(0, 7) === month) { if (r.type === 'Out') mOut += r.amount; else mIn += r.amount; }
     if (dk !== today) return;
@@ -658,7 +662,7 @@ function getData(key, month) {
   var cards = cards_();
   month = month || dayKey_(Date.now()).slice(0, 7);
   rows.forEach(function (r) {
-    var dk = dayKey_(r.time), mk = dk.slice(0, 7);
+    var dk = r.day, mk = dk.slice(0, 7);
     months[mk] = 1;
     if ((r.type === 'In' || r.type === 'Out') && r.currency === 'AED') {
       totals[mk] = totals[mk] || { 'in': 0, out: 0 };
@@ -696,23 +700,80 @@ function getData(key, month) {
 // Change a category, or mark a row as between my accounts / ignored. Optionally teach the rule.
 function updateTx(key, id, change) {
   if (key !== key_()) throw new Error('Not allowed');
-  var sh = ss_().getSheetByName(SHEET_TX);
-  var rows = readRows_(sh);
-  var r = rows.filter(function (x) { return x.id === id; })[0];
-  if (!r) throw new Error('Row not found');
-  if (change.remove) { sh.deleteRow(r.row); return 'Removed'; }
-  if (change.type) sh.getRange(r.row, COL.Type + 1).setValue(change.type);
-  if (change.category) sh.getRange(r.row, COL.Category + 1).setValue(change.category);
-  if (change.type === 'Own') sh.getRange(r.row, COL.Category + 1).setValue('Between my accounts');
-  if (change.learn && change.category && r.party) {
-    var word = squash_(r.party).toLowerCase().split(/\s+/).slice(0, 2).join(' ');
-    var cs = ss_().getSheetByName(SHEET_CAT);
-    var vals = cs.getRange(2, 1, Math.max(1, cs.getLastRow() - 1), 2).getValues();
-    var i = vals.map(function (v) { return v[0]; }).indexOf(change.category);
-    if (i >= 0) cs.getRange(i + 2, 2).setValue(vals[i][1] + ', ' + word);
-    else cs.appendRow([change.category, word]);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000); // a bank SMS arriving at the same moment must not shift the row being changed
+  try {
+    var sh = ss_().getSheetByName(SHEET_TX);
+    var rows = readRows_(sh);
+    var r = rows.filter(function (x) { return x.id === id; })[0];
+    if (!r) throw new Error('Row not found');
+    if (change.remove) { sh.deleteRow(r.row); return 'Removed'; }
+    if (change.type) sh.getRange(r.row, COL.Type + 1).setValue(change.type);
+    if (change.category) sh.getRange(r.row, COL.Category + 1).setValue(change.category);
+    if (change.type === 'Own') sh.getRange(r.row, COL.Category + 1).setValue('Between my accounts');
+    var also = 0;
+    if (change.learn && change.category && r.party && change.type !== 'Own' && (r.type === 'In' || r.type === 'Out')) {
+      // Exact merchant memory: checked before the keyword rules, so "always" really means always.
+      rememberMerchant_(r.party, r.type, change.category);
+      // Keyword rule as before, so other branches of the same shop are caught too.
+      var word = squash_(r.party).toLowerCase().split(/\s+/).slice(0, 2).join(' ');
+      var cs = ss_().getSheetByName(SHEET_CAT);
+      var vals = cs.getRange(2, 1, Math.max(1, cs.getLastRow() - 1), 2).getValues();
+      var i = vals.map(function (v) { return v[0]; }).indexOf(change.category);
+      var known = i >= 0 && String(vals[i][1]).toLowerCase().split(',').some(function (w) { return squash_(w) === word; });
+      if (i >= 0 && !known) cs.getRange(i + 2, 2).setValue(vals[i][1] + ', ' + word);
+      else if (i < 0) cs.appendRow([change.category, word]);
+      // Earlier payments to the same place move to the new category too.
+      var p = merchantKey_(r.party);
+      rows.forEach(function (x) {
+        if (x.id === r.id || x.type !== r.type || merchantKey_(x.party) !== p || x.category === change.category) return;
+        if (FIXED_CATS_.indexOf(x.category) >= 0) return;
+        sh.getRange(x.row, COL.Category + 1).setValue(change.category); also++;
+      });
+    }
+    return also ? 'Updated, and ' + also + ' earlier payment' + (also > 1 ? 's' : '') + ' at ' + r.party + ' moved too' : 'Updated';
+  } finally {
+    lock.releaseLock();
   }
-  return 'Updated';
+}
+
+// ----- merchant memory (Merchants tab: exact name, money in or out, category) -----
+var SHEET_MER = 'Merchants';
+var FIXED_CATS_ = ['Salary', 'Refunds', 'Between my accounts', 'Bank confirmation'];
+function merchantKey_(s) { return squash_(s).toLowerCase(); }
+function merchants_() {
+  var sh = ss_().getSheetByName(SHEET_MER), out = {};
+  if (!sh || sh.getLastRow() < 2) return out;
+  sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues().forEach(function (v) {
+    if (v[0] && v[2]) out[(String(v[1]) === 'In' ? 'In' : 'Out') + '|' + merchantKey_(v[0])] = String(v[2]);
+  });
+  return out;
+}
+function merchantCategory_(tx) {
+  if (!tx.party || (tx.type !== 'In' && tx.type !== 'Out') || tx.kind === 'salary' || tx.kind === 'refund') return '';
+  return merchants_()[tx.type + '|' + merchantKey_(tx.party)] || '';
+}
+function rememberMerchant_(party, type, category) {
+  var ss = ss_(), sh = ss.getSheetByName(SHEET_MER);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_MER);
+    sh.getRange(1, 1, 1, 3).setValues([['Merchant or person (exact name)', 'Money in or out', 'Always use category']]).setFontWeight('bold');
+    sh.setFrozenRows(1); sh.setColumnWidth(1, 280); sh.setColumnWidth(3, 200);
+  }
+  var n = sh.getLastRow(), k = merchantKey_(party);
+  var vals = n > 1 ? sh.getRange(2, 1, n - 1, 2).getValues() : [];
+  for (var i = 0; i < vals.length; i++) {
+    if (merchantKey_(vals[i][0]) === k && String(vals[i][1]) === type) { sh.getRange(i + 2, 3).setValue(category); return; }
+  }
+  sh.appendRow([party, type, category]);
+}
+
+// A cash entry for an earlier day is saved at noon of that day; today (or no date) keeps the current time.
+function manualTime_(date) {
+  var m = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m || date >= dayKey_(Date.now())) return 0;
+  var t = Utilities.parseDate(date + ' 12:00', TZ, 'yyyy-MM-dd HH:mm').getTime();
+  return isNaN(t) ? 0 : t;
 }
 
 function addManual(key, entry) {
@@ -874,7 +935,7 @@ function streakLimit_() {
 function streak_(rows) {
   var limit = streakLimit_(), per = {}, first = null;
   rows.forEach(function (r) {
-    var k = dayKey_(r.time);
+    var k = r.day;
     if (!first || k < first) first = k;
     if (r.type === 'Out' && r.currency === 'AED') per[k] = (per[k] || 0) + r.amount;
   });
@@ -919,13 +980,13 @@ function esc_(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function
 function monthStats_(rows, mk) {
   var s = { out: 0, inn: 0, nOut: 0, cats: {}, places: {}, big: [], days: {}, salary: 0, people: 0 };
   rows.forEach(function (r) {
-    if (r.currency !== 'AED' || dayKey_(r.time).slice(0, 7) !== mk) return;
+    if (r.currency !== 'AED' || r.day.slice(0, 7) !== mk) return;
     if (r.type === 'Out') {
       s.out += r.amount; s.nOut++;
       s.cats[r.category] = (s.cats[r.category] || 0) + r.amount;
       var pl = r.party || r.category;
       s.places[pl] = s.places[pl] || { v: 0, n: 0 }; s.places[pl].v += r.amount; s.places[pl].n++;
-      s.days[dayKey_(r.time)] = (s.days[dayKey_(r.time)] || 0) + r.amount;
+      s.days[r.day] = (s.days[r.day] || 0) + r.amount;
       s.big.push(r);
     }
     if (r.type === 'In') { s.inn += r.amount; if (r.category === 'Salary') s.salary += r.amount; if (r.category === 'From people') s.people += r.amount; }
@@ -1021,7 +1082,7 @@ function getAllData(key) {
   rows.forEach(function (r) {
     if (r.type !== 'In' && r.type !== 'Out') return;
     if (r.currency !== 'AED') { other++; return; }
-    out.push({ d: dayKey_(r.time), h: +Utilities.formatDate(new Date(r.time), TZ, 'H'), t: r.type, a: r.amount, c: r.category, p: r.party || '', w: /wallet/.test(r.source) ? 1 : 0 });
+    out.push({ d: r.day, h: +Utilities.formatDate(new Date(r.time), TZ, 'H'), t: r.type, a: r.amount, c: r.category, p: r.party || '', w: /wallet/.test(r.source) ? 1 : 0 });
   });
   out.sort(function (a, b) { return a.d < b.d ? -1 : (a.d > b.d ? 1 : 0); });
   var st = streak_(rows);

@@ -22,7 +22,7 @@ Coffee & tea | coffee, cafe, starbucks, costa, tim hortons, karak
 - Matching is case-insensitive and looks for the word anywhere in the merchant name.
 - The first matching row wins, so put more specific categories higher.
 - Add new categories by adding a row. They appear in the dashboard's category picker.
-- **Learning:** tap a transaction on the dashboard, pick a category and keep *Always use this category* ticked. The merchant name is added to that row, so future payments there are sorted automatically.
+- **Learning:** tap a transaction on the dashboard, pick a category and keep *Always use this category* ticked. The exact name goes into a **Merchants** tab, which is checked before the word rules, so that place or person always gets this category. Earlier payments with the same name move too. The first two words of the name are also added to the category's row here, so other branches of the same shop are caught. To undo, delete the row in the Merchants tab (and the words here, if needed).
 
 A plain account debit with no name (e.g. *AED 25.00 was debited from your account …*) is filed under **To people**, since it is usually money sent to a friend; AED 5 or less counts as *Bank fees*.
 
