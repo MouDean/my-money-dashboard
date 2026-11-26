@@ -657,6 +657,50 @@ function period_(rows) {
     daysLeft: daysLeft, daysIn: daysIn, perDay: daysLeft > 0 ? left / daysLeft : left, party: sal.party };
 }
 
+// ----- Pay cycles (v88) -----
+// The app's "month" runs salary to salary: "November pay" starts the day November's salary lands and ends the
+// day before the next salary. The open cycle runs until the next salary arrives, however late it is.
+// Settings → "Months follow (salary / calendar)" switches back to calendar months.
+function cycleMode_() { return /^cal/i.test(String(settingVal_(/^months follow/i, 'Months follow (salary / calendar)', 'salary')).trim()) ? 'calendar' : 'salary'; }
+function addDays_(k, n) { return new Date(keyToUTC_(k) + n * 86400000).toISOString().slice(0, 10); }
+function monthEnd_(mk) { var p = mk.split('-'); return new Date(Date.UTC(+p[0], +p[1], 0)).toISOString().slice(0, 10); }
+// A salary from the 10th on is that month's pay; one in the first days of a month is last month's pay, paid late.
+function salaryLabel_(k) { return +k.slice(8) >= 10 ? k.slice(0, 7) : shiftMonth_(k.slice(0, 7), -1); }
+function cycles_(rows, mode) {
+  var today = dayKey_(Date.now()), first = today, pays = [], plan = Number(planSalary_(0)) || 0;
+  var min = plan ? plan * 0.4 : 1000; // a small "Salary" payment (an allowance) doesn't start a new cycle
+  rows.forEach(function (r) {
+    if (r.day < first) first = r.day;
+    if (r.type === 'In' && r.category === 'Salary' && r.currency === 'AED' && r.amount >= min) pays.push(r.day);
+  });
+  pays.sort();
+  var starts = {}, last = '';
+  if (mode !== 'calendar') pays.forEach(function (k) {
+    if (last && keyToUTC_(k) - keyToUTC_(last) < 15 * 86400000) return; // a second salary message within two weeks is the same pay
+    var L = salaryLabel_(k);
+    while (starts[L]) L = shiftMonth_(L, 1);
+    starts[L] = k; last = k;
+  });
+  var labs = Object.keys(starts).sort(), list = [], m = first.slice(0, 7);
+  // Calendar months until the first salary, then one cycle per salary.
+  while (m <= today.slice(0, 7) && (!labs.length || (m < labs[0] && m + '-01' < starts[labs[0]]))) { list.push({ m: m, start: m + '-01' }); m = shiftMonth_(m, 1); }
+  labs.forEach(function (L) { list.push({ m: L, start: starts[L], pay: true }); });
+  if (!list.length) list.push({ m: today.slice(0, 7), start: today.slice(0, 7) + '-01' });
+  if (list[0].start > first) list[0].start = first; // tracking began mid-cycle: the first cycle starts on day one
+  list.forEach(function (c, i) {
+    if (list[i + 1]) c.end = addDays_(list[i + 1].start, -1);
+    else if (c.pay) { var nx = shiftMonth_(c.m, 1) + '-' + ('0' + payday_()).slice(-2), e = addDays_(nx, -1); c.end = e < today ? today : e; } // stays open until the next salary
+    else c.end = monthEnd_(c.m) < today ? today : monthEnd_(c.m);
+  });
+  var by = {}; list.forEach(function (c) { by[c.m] = c; });
+  return { mode: mode, list: list, by: by, current: list[list.length - 1].m };
+}
+// Which cycle a day belongs to.
+function cycleOf_(cyc, day) {
+  for (var i = cyc.list.length - 1; i >= 0; i--) if (cyc.list[i].start <= day) return cyc.list[i].m;
+  return cyc.list[0].m;
+}
+
 function text_(s) { return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.TEXT); }
 function fmt_(n) { return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
@@ -889,12 +933,14 @@ function getData(key, month) {
   var rows = readRows_(ss_().getSheetByName(SHEET_TX));
   var months = {}, balances = {}, list = [], totals = {};
   var cards = cards_();
-  var today = dayKey_(Date.now()), current = today.slice(0, 7), pay = period_(rows);
-  month = month || current;
+  var today = dayKey_(Date.now()), pay = period_(rows), cyc = cycles_(rows, cycleMode_()), current = cyc.current;
+  if (!month) month = current;
+  else if (!cyc.by[month]) { // a month with no cycle of its own (e.g. opened from All time): the cycle running then
+    var pick = cyc.list[0].m; cyc.list.forEach(function (c) { if (c.m <= month) pick = c.m; }); month = pick;
+  }
   var carry = month === current && !pay.none && pay.salary > 0 ? [] : null;
   rows.forEach(function (r) {
-    var dk = r.day, mk = dk.slice(0, 7);
-    months[mk] = 1;
+    var dk = r.day, mk = cycleOf_(cyc, dk);
     if ((r.type === 'In' || r.type === 'Out') && r.currency === 'AED') {
       totals[mk] = totals[mk] || { 'in': 0, out: 0 };
       if (!isAside_(r)) totals[mk][r.type === 'In' ? 'in' : 'out'] += r.amount; // set-aside money isn't spending
@@ -909,11 +955,12 @@ function getData(key, month) {
   var cats = ss_().getSheetByName(SHEET_CAT).getRange('A2:A').getValues().map(function (v) { return v[0]; }).filter(String);
   ['Salary', 'Side income', 'From people', 'To people', 'Family', 'Investments', 'Saving', 'Money in', 'Refunds', 'Between my accounts', 'Credit card', 'Other']
     .forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
-  var trend = [], p = month.split('-'), y = +p[0], mo = +p[1];
-  for (var i = 5; i >= 0; i--) {
-    var d = new Date(y, mo - 1 - i, 1), k = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
-    trend.push({ month: k, 'in': totals[k] ? totals[k]['in'] : 0, out: totals[k] ? totals[k].out : 0 });
-  }
+  var trend = [], at = cyc.list.indexOf(cyc.by[month]);
+  cyc.list.slice(Math.max(0, at - 5), at + 1).forEach(function (c) {
+    var k = c.m; trend.push({ month: k, 'in': totals[k] ? totals[k]['in'] : 0, out: totals[k] ? totals[k].out : 0 });
+  });
+  var cur = cyc.by[month], days = [];
+  for (var dd = cur.start; dd <= cur.end; dd = addDays_(dd, 1)) days.push(dd);
   var all = Object.keys(balances).map(function (k) { return balances[k]; }).sort(function (a, b) { return b.time - a.time; });
   var cardList = [], accts = [];
   all.forEach(function (b) {
@@ -925,7 +972,8 @@ function getData(key, month) {
     }
     else accts.push(b);
   });
-  return { month: month, today: today, months: Object.keys(months).sort(), rows: list.reverse(), payCarry: carry,
+  return { month: month, today: today, months: cyc.list.map(function (c) { return c.m; }), rows: list.reverse(), payCarry: carry,
+    current: current, cycleMode: cyc.mode, start: cur.start, end: cur.end, days: days, cycles: cyc.list.map(function (c) { return { m: c.m, start: c.start, end: c.end, pay: !!c.pay }; }),
     trend: trend, cards: cardList, balances: accts, period: pay, budgets: budgets_(), plan: { salary: planSalary_(0) }, streak: streak_(rows),
     contracts: contracts_(rows), incoming: incoming_(rows),
     categories: cats, logos: merchantLogos_(), blogos: bizLogos_(list.filter(function (r) { return r.source !== 'manual' && r.party && r.category !== 'To people' && r.category !== 'From people'; }).map(function (r) { return r.party; })), review: Math.max(0, ss_().getSheetByName(SHEET_REV).getLastRow() - 1) };

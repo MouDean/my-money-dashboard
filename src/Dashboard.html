@@ -44,6 +44,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .month button{width:36px;height:36px;border-radius:50%;font-size:20px;color:var(--accent)}
 .month button:disabled{color:var(--line)}
 .month strong{font-size:17px;min-width:120px;text-align:center}
+.month strong small{display:block;font-size:11px;font-weight:500;color:var(--muted);letter-spacing:0;margin-top:1px}
 .refresh{font-size:13px;color:var(--accent);padding:6px 10px;border:1px solid var(--line);border-radius:999px}
 
 .hero{display:flex;flex-direction:column;gap:6px}
@@ -1082,6 +1083,19 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c
 function money(n, d){ return Number(n||0).toLocaleString('en-US', {minimumFractionDigits: d === 'ax' ? 0 : 2, maximumFractionDigits: d === 'ax' ? 0 : 2}); }
 function mName(m){ var p = m.split('-'); return new Date(+p[0], +p[1]-1, 1).toLocaleString('en-GB', {month:'long', year:'numeric'}); }
 function shiftMonth(m, k){ var p = m.split('-'), d = new Date(+p[0], +p[1]-1+k, 1); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2); }
+// Pay cycles (v88): each "month" runs from its salary to the day before the next one. The server sends the list.
+function cycOf(m){ var l = (S.data && S.data.cycles) || []; for (var i = 0; i < l.length; i++) if (l[i].m === m) return l[i]; return null; }
+function payMode(){ return !!(S.data && S.data.cycleMode === 'salary' && (S.data.cycles || []).some(function(c){ return c.pay; })); }
+function cName(m){ var c = cycOf(m); return c && c.pay && payMode() ? mName(m).split(' ')[0] + ' pay' : mName(m); }
+function cRange(m){ var c = cycOf(m); return c && c.pay && payMode() ? dLabel(c.start) + ' → ' + dLabel(c.end) : ''; }
+function setLabel(m){ var r = cRange(m); $('mlabel').innerHTML = esc(cName(m)) + (r ? '<small>' + r + '</small>' : ''); }
+// The cycle a day belongs to (calendar month when there is no cycle list yet).
+function labelOf(k){ var l = (S.data && S.data.cycles) || []; for (var i = l.length - 1; i >= 0; i--) if (l[i].start <= k) return l[i].m; return k.slice(0, 7); }
+// Every day of the shown cycle, in order.
+function dayKeys(d){ if (d.days && d.days.length) return d.days; var p = d.month.split('-'), n = new Date(+p[0], +p[1], 0).getDate(), a = []; for (var i = 1; i <= n; i++) a.push(d.month + '-' + ('0'+i).slice(-2)); return a; }
+function curMonth(d){ return d.current || d.today.slice(0, 7); }
+// The cycle before or after (k = -1 / +1), skipping gaps; null at either end.
+function stepMonth(m, k){ var l = (S.data && S.data.months) || [], i = l.indexOf(m); if (i < 0) { var t = shiftMonth(m, k); return t <= (S.data ? curMonth(S.data) : t) ? t : null; } return l[i + k] || null; }
 function toast(t){ var e = document.createElement('div'); e.className = 'toast'; e.textContent = t; document.body.appendChild(e); setTimeout(function(){ e.remove(); }, 2200); }
 
 // quiet: refresh in place (coming back to the app) without replaying the animations or jumping the page.
@@ -1092,7 +1106,7 @@ function cacheSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } cat
 function load(month, quiet){
   var seq = S.seq = (S.seq || 0) + 1, cur = !month || month === S.thisMonth;
   S.want = month || null; S.loadedAt = Date.now();
-  if (!quiet) $('mlabel').textContent = month ? mName(month) : 'Loading…';
+  if (!quiet) { if (month) setLabel(month); else $('mlabel').textContent = 'Loading…'; }
   google.script.run.withSuccessHandler(function(d){
       if (seq !== S.seq) return; // a newer request is on its way
       S.want = null;
@@ -1159,17 +1173,18 @@ function cashLines(cash, p, color){
 }
 // The one line under the account total: what this calendar month cost (set-aside money not included). Tap to see the payments.
 function spentLine(v){
-  return '<button type="button" class="spent-line" data-x="type:spent" aria-label="Show this month\'s spending">Spent this month <b class="num">AED ' + money(v, 0) + '</b></button>';
+  var w = payMode() ? 'this pay' : 'this month';
+  return '<button type="button" class="spent-line" data-x="type:spent" aria-label="Show ' + w + '\'s spending">Spent ' + w + ' <b class="num">AED ' + money(v, 0) + '</b></button>';
 }
 // Under the two big numbers: each bank account on its own, then a small bar per day of this month's spending.
 function heroExtra(d, perDay){
   var accts = (d.balances || []).map(function(b){
     return '<div class="hacct"><span class="hb">' + esc(b.bank) + ' <small>' + esc(b.account || '') + '</small></span><b class="num"' + (b.balance < 0 ? ' style="color:var(--out)"' : '') + '>AED ' + signed(Number(b.balance)) + '</b><span class="hw">as of ' + esc(b.when) + '</span></div>';
   }).join('');
-  var p = d.month.split('-'), days = new Date(+p[0], +p[1], 0).getDate(), max = 0, sum = 0, n = 0, bars = '';
-  for (var i = 1; i <= days; i++) { var v = perDay[d.month + '-' + ('0' + i).slice(-2)] || 0; if (v > max) max = v; }
-  for (i = 1; i <= days; i++) {
-    var k = d.month + '-' + ('0' + i).slice(-2), v = perDay[k] || 0, fut = k > d.today, h = max ? Math.max(v ? 6 : 2, Math.round(v / max * 100)) : 2;
+  var keys = dayKeys(d), days = keys.length, max = 0, sum = 0, n = 0, bars = '';
+  for (var i = 0; i < days; i++) { var v = perDay[keys[i]] || 0; if (v > max) max = v; }
+  for (i = 0; i < days; i++) {
+    var k = keys[i], v = perDay[k] || 0, fut = k > d.today, h = max ? Math.max(v ? 6 : 2, Math.round(v / max * 100)) : 2;
     if (!fut) { sum += v; n++; }
     bars += '<i class="db' + (k === d.today ? ' today' : '') + (fut ? ' fut' : '') + (S.dayFilter === k ? ' sel' : '') + '"' + (v ? ' data-day="' + k + '" role="button" tabindex="0" title="' + dLabel(k) + ': AED ' + money(v) + '"' : '') + ' style="height:' + h + '%"></i>';
   }
@@ -1218,8 +1233,9 @@ function openTransactionSearch(){
 
 function render(){
   var d = S.data, rows = d.rows, aed = rows.filter(function(r){ return r.currency === 'AED'; });
-  $('mlabel').textContent = mName(d.month);
-  $('next').disabled = d.month >= d.today.slice(0,7);
+  setLabel(d.month);
+  $('next').disabled = d.month >= curMonth(d);
+  $('prev').disabled = !!(d.months && d.months.indexOf(d.month) === 0);
   var out = 0, inn = 0, nOut = 0, tOut = 0, tIn = 0, tn = 0, cats = {}, perDay = {}, inDay = {}, ins = [], setAside = 0;
   aed.forEach(function(r){
     var sa = r.type === 'Out' && aside(r.category);
@@ -1230,7 +1246,7 @@ function render(){
     if (r.day === d.today && !sa && (r.type === 'Out' || r.type === 'In')){ tn++; if (r.type === 'Out') tOut += r.amount; else tIn += r.amount; }
   });
   var foreign = rows.filter(function(r){ return r.currency !== 'AED' && r.type !== 'Own'; }).length;
-  var net = inn - out, isNow = d.month === d.today.slice(0,7), phone = layoutForWidth(window.innerWidth) === 0;
+  var net = inn - out, isNow = d.month === curMonth(d), phone = layoutForWidth(window.innerWidth) === 0;
   var h = '', P = {}, g = function(cls, inner){ if (inner) P[cls.slice(2)] = '<div class="g ' + cls + '">' + inner + '</div>'; };
   if (d.review) h += '<div class="warn g-full">' + d.review + ' payment message(s) need review. Open the Review tab in your sheet.</div>';
   var bud = isNow ? buddyState(d) : null;
@@ -1466,12 +1482,12 @@ function cards(list){
 
 // Running totals through the month: money in vs money out.
 function flowChart(perDay, inDay, month, today){
-  var p = month.split('-'), days = new Date(+p[0], +p[1], 0).getDate();
-  var last = month === today.slice(0,7) ? +today.slice(8) : days;
-  // A salary paid late last month (e.g. 24 Oct) pays for this month: start the money-in line with it.
-  var pp = S.data.period, m1 = month + '-01', carry = (pp && !pp.none && pp.salary > 0 && pp.start < m1 && pp.next > m1) ? (pp.preIn || pp.salary) : 0;
+  var keys = dayKeys(S.data), days = keys.length, ti = keys.indexOf(today);
+  var last = ti >= 0 ? ti + 1 : (keys[0] > today ? 0 : days);
+  // Calendar months only: a salary paid late last month (e.g. 24 Oct) pays for this month, so the money-in line starts with it.
+  var pp = S.data.period, m1 = keys[0], carry = (pp && !pp.none && pp.salary > 0 && pp.start < m1 && pp.next > m1) ? (pp.preIn || pp.salary) : 0;
   var cin = [], cout = [], a = carry, b = 0, i;
-  for (i = 1; i <= last; i++){ var k = month + '-' + ('0'+i).slice(-2); a += inDay[k] || 0; b += perDay[k] || 0; cin.push(a); cout.push(b); }
+  for (i = 1; i <= last; i++){ var k = keys[i-1]; a += inDay[k] || 0; b += perDay[k] || 0; cin.push(a); cout.push(b); }
   var max = Math.max(a, b);
   if (!max) return '';
   var W = 340, H = 150, L = 38, R = 64, T = 12, B = 20;
@@ -1494,14 +1510,14 @@ function flowChart(perDay, inDay, month, today){
   s += '<text x="' + (ex + 6) + '" y="' + (ya + 3) + '" font-size="10" fill="var(--in)" font-family="DM Mono, monospace">' + money(a, 'ax') + '</text>';
   s += '<text x="' + (ex + 6) + '" y="' + (yb + 3) + '" font-size="10" fill="var(--out)" font-family="DM Mono, monospace">' + money(b, 'ax') + '</text>';
   var xt = []; for (var d2 = 2; d2 <= days; d2 += 2) xt.push(d2);
-  xt.forEach(function(dd){ s += '<text x="' + x(dd).toFixed(1) + '" y="' + (H - 5) + '" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="DM Mono, monospace">' + dd + '</text>'; });
+  xt.forEach(function(dd){ s += '<text x="' + x(dd).toFixed(1) + '" y="' + (H - 5) + '" font-size="9" text-anchor="middle" fill="var(--muted)" font-family="DM Mono, monospace">' + (+keys[dd-1].slice(8)) + '</text>'; });
   var sw = (W - L - R) / Math.max(1, days - 1);
-  for (i = 1; i <= last; i++){ var kk = month + '-' + ('0'+i).slice(-2), sel = S.dayFilter === kk;
+  for (i = 1; i <= last; i++){ var kk = keys[i-1], sel = S.dayFilter === kk;
     if (sel) s += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + T + '" y2="' + y(0) + '" stroke="var(--accent)" stroke-width="1.5"/><circle cx="' + x(i) + '" cy="' + y(cin[i-1]) + '" r="3.5" fill="var(--in)" stroke="var(--surface)"/><circle cx="' + x(i) + '" cy="' + y(cout[i-1]) + '" r="3.5" fill="var(--out)" stroke="var(--surface)"/>';
     s += '<rect class="hit' + (sel ? ' sel' : '') + '" data-day="' + kk + '" x="' + (x(i) - sw / 2).toFixed(1) + '" y="' + T + '" width="' + sw.toFixed(1) + '" height="' + (y(0) - T) + '"><title>' + dLabel(kk) + ': in ' + money(inDay[kk] || 0) + ', out ' + money(perDay[kk] || 0) + '</title></rect>'; }
   if (carry) s += '<text x="' + (L + 4) + '" y="' + (y(carry) - 5) + '" font-size="9" fill="var(--in)" font-family="DM Mono, monospace">since payday · ' + dLabel(pp.start) + '</text>';
   s += '</svg>';
-  return '<section class="chart"><h2>Cash flow this month</h2>' + s +
+  return '<section class="chart"><h2>Cash flow this ' + (payMode() ? 'pay' : 'month') + '</h2>' + s +
     '<div class="legend"><span><i style="background:var(--in)"></i>Money in so far' + (carry ? ' (starts with what came in since payday, ' + dLabel(pp.start) + ')' : '') + '</span><span><i style="background:var(--out)"></i>Money out so far</span><span>Tap a day to see its payments</span></div></section>';
 }
 
@@ -1518,15 +1534,16 @@ function trendChart(trend, month){
   s += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
   trend.forEach(function(t, i){
     var cx = gw * i + gw / 2, cur = t.month === month;
-    if (!cur) s += '<rect class="hit" data-goto="' + t.month + '" x="' + (gw * i).toFixed(1) + '" y="' + T + '" width="' + gw.toFixed(1) + '" height="' + (H - T) + '"><title>Open ' + mName(t.month) + '</title></rect>';
+    if (!cur) s += '<rect class="hit" data-goto="' + t.month + '" x="' + (gw * i).toFixed(1) + '" y="' + T + '" width="' + gw.toFixed(1) + '" height="' + (H - T) + '"><title>Open ' + cName(t.month) + '</title></rect>';
     if (t['in']) s += '<rect x="' + (cx - bw - 1).toFixed(1) + '" y="' + y(t['in']).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(t['in'])).toFixed(1) + '" rx="2" fill="var(--in)"><title>In AED ' + money(t['in']) + '</title></rect>';
     if (t.out) s += '<rect x="' + (cx + 1).toFixed(1) + '" y="' + y(t.out).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(t.out)).toFixed(1) + '" rx="2" fill="var(--out)"><title>Out AED ' + money(t.out) + '</title></rect>';
     var p = t.month.split('-'), lab = new Date(+p[0], +p[1]-1, 1).toLocaleString('en-GB', {month:'short'});
     s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 5) + '" font-size="10" text-anchor="middle" fill="' + (cur ? 'var(--ink)' : 'var(--muted)') + '" font-weight="' + (cur ? 600 : 400) + '" font-family="DM Mono, monospace">' + lab + '</text>';
   });
   s += '</svg>';
-  return '<section class="chart"><h2>Last six months</h2>' + s +
-    '<div class="legend"><span><i style="background:var(--in)"></i>Money in</span><span><i style="background:var(--out)"></i>Money out</span><span>Tap a month to open it</span></div></section>';
+  var pw = payMode() ? 'pay' : 'month';
+  return '<section class="chart"><h2>Last ' + (trend.length > 1 ? trend.length + ' ' + pw + 's' : pw) + '</h2>' + s +
+    '<div class="legend"><span><i style="background:var(--in)"></i>Money in</span><span><i style="background:var(--out)"></i>Money out</span><span>Tap a ' + pw + ' to open it</span></div></section>';
 }
 
 function txRow(r){
@@ -1541,10 +1558,10 @@ function txRow(r){
 }
 
 function chart(perDay, month, today, n, total){
-  var p = month.split('-'), days = new Date(+p[0], +p[1], 0).getDate();
+  var keys = dayKeys(S.data), days = keys.length;
   var W = 340, H = 150, padB = 16, padT = 16, bw = W / days;
   var vals = [], max = 0, i;
-  for (i = 1; i <= days; i++){ var k = month + '-' + ('0'+i).slice(-2); vals.push(perDay[k] || 0); if (perDay[k] > max) max = perDay[k]; }
+  for (i = 0; i < days; i++){ var k = keys[i]; vals.push(perDay[k] || 0); if (perDay[k] > max) max = perDay[k]; }
   if (!max) return '';
   var nice = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / nice) * nice;
   var y = function(v){ return padT + (H - padT - padB) * (1 - v / top); };
@@ -1553,12 +1570,12 @@ function chart(perDay, month, today, n, total){
   s += '<text x="0" y="' + (y(top) - 4) + '" font-size="10" fill="var(--muted)" font-family="DM Mono, monospace">' + money(top, 'ax') + '</text>';
   s += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
   for (i = 0; i < days; i++){
-    var k2 = month + '-' + ('0'+(i+1)).slice(-2), v = vals[i], isT = k2 === today;
+    var k2 = keys[i], v = vals[i], isT = k2 === today;
     var selD = S.dayFilter === k2;
     s += '<rect x="' + (i*bw + bw*0.18).toFixed(1) + '" y="' + padT + '" width="' + (bw*0.64).toFixed(1) + '" height="' + (y(0) - padT).toFixed(1) + '" rx="1.5" fill="var(--line)" opacity="' + (isT ? '.55' : '.22') + '"/>';
     if (v) s += '<rect x="' + (i*bw + bw*0.18).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + (bw*0.64).toFixed(1) + '" height="' + (y(0)-y(v)).toFixed(1) + '" rx="1.5" fill="' + (selD ? 'var(--ink)' : isT ? 'var(--out)' : 'var(--accent)') + '"/>';
     if (v) s += '<rect class="hit' + (selD ? ' sel' : '') + '" data-day="' + k2 + '" x="' + (i*bw).toFixed(1) + '" y="' + padT + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - padT).toFixed(1) + '"><title>' + dLabel(k2) + ': AED ' + money(v) + '</title></rect>';
-    s += '<text x="' + (i*bw + bw/2).toFixed(1) + '" y="' + (H - 4) + '" font-size="7.5" text-anchor="middle" fill="' + (isT ? 'var(--out)' : v ? 'var(--ink)' : 'var(--muted)') + '"' + (isT || v ? ' font-weight="700"' : ' opacity=".7"') + ' font-family="DM Mono, monospace">' + (i+1) + '</text>';
+    s += '<text x="' + (i*bw + bw/2).toFixed(1) + '" y="' + (H - 4) + '" font-size="7.5" text-anchor="middle" fill="' + (isT ? 'var(--out)' : v ? 'var(--ink)' : 'var(--muted)') + '"' + (isT || v ? ' font-weight="700"' : ' opacity=".7"') + ' font-family="DM Mono, monospace">' + (+k2.slice(8)) + '</text>';
   }
   s += '</svg>';
   var spentDays = vals.filter(Boolean).length;
@@ -1694,19 +1711,19 @@ function buddySVG(st) {
 function heatmap(perDay, inDay, month, today) {
   // Money heat map: each day's net. Red when more went out, green when more came in; brighter = bigger.
   // Red and green are scaled separately so a salary day doesn't wash out the spending days.
-  var p = month.split('-'), days = new Date(+p[0], +p[1], 0).getDate();
-  var offset = (new Date(+p[0], +p[1] - 1, 1).getDay() + 6) % 7, maxOut = 0, maxIn = 0, net = {}, k, i;
-  for (i = 1; i <= days; i++){ k = month + '-' + ('0' + i).slice(-2); var n = (inDay[k] || 0) - (perDay[k] || 0); net[k] = n; if (n < maxOut) maxOut = n; if (n > maxIn) maxIn = n; }
+  var keys = dayKeys(S.data), days = keys.length;
+  var offset = (new Date(keys[0] + 'T12:00:00').getDay() + 6) % 7, maxOut = 0, maxIn = 0, net = {}, k, i;
+  for (i = 1; i <= days; i++){ k = keys[i-1]; var n = (inDay[k] || 0) - (perDay[k] || 0); net[k] = n; if (n < maxOut) maxOut = n; if (n > maxIn) maxIn = n; }
   var h = '<div class="heat-h">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</div><div class="heat">';
   for (i = 0; i < offset; i++) h += '<span></span>';
   var short = function(v){ v = Math.abs(v); return v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(v)); };
   for (i = 1; i <= days; i++) {
-    k = month + '-' + ('0' + i).slice(-2);
-    var v = net[k], fut = k > today, cls = 'l0';
+    k = keys[i-1];
+    var v = net[k], fut = k > today, cls = 'l0', dn = +k.slice(8);
     if (v < 0) cls = 'l' + Math.max(1, Math.ceil(4 * v / maxOut)); else if (v > 0) cls = 'g' + Math.max(1, Math.ceil(4 * v / maxIn));
-    var lab = i + ': ' + (v > 0 ? 'AED ' + money(v) + ' more came in' : v < 0 ? 'AED ' + money(-v) + ' more went out' : 'no change') + (inDay[k] ? ' (in ' + money(inDay[k]) + ', out ' + money(perDay[k] || 0) + ')' : '');
+    var lab = dLabel(k) + ': ' + (v > 0 ? 'AED ' + money(v) + ' more came in' : v < 0 ? 'AED ' + money(-v) + ' more went out' : 'no change') + (inDay[k] ? ' (in ' + money(inDay[k]) + ', out ' + money(perDay[k] || 0) + ')' : '');
     h += '<button class="' + cls + (k === today ? ' now' : '') + (fut ? ' fut' : '') + (S.dayFilter === k ? ' sel' : '') + '" data-day="' + k + '" style="--d:' + i + '" ' +
-      (fut ? 'disabled ' : '') + 'aria-label="' + lab + '"><i>' + i + '</i>' + (v ? '<b class="num">' + (v > 0 ? '+' : '') + short(v) + '</b>' : '') + '</button>';
+      (fut ? 'disabled ' : '') + 'aria-label="' + lab + '"><i>' + (dn === 1 && i > 1 ? esc(dLabel(k)) : dn) + '</i>' + (v ? '<b class="num">' + (v > 0 ? '+' : '') + short(v) + '</b>' : '') + '</button>';
   }
   h += '</div><div class="legend heat-l"><span>Spent more</span><em class="l4"></em><em class="l2"></em><em class="l0"></em><em class="g2"></em><em class="g4"></em><span>Came in more</span></div>' +
     '<div class="sub" style="margin-top:6px">Each day shows money in minus money out. Tap a day to see its payments.</div>';
@@ -1919,8 +1936,8 @@ function conDelSheet(cid) {
 function markPaid(cat) {
   var b = S.data.budgets || {}, cats = S.data.categories.filter(function (c) { return NOT_SPENDING.indexOf(c) < 0; });
   var spent = {}; (S.data.rows || []).forEach(function (r) { if (r.type === 'Out' && r.currency === 'AED') spent[r.category] = (spent[r.category] || 0) + r.amount; });
-  var month = S.data.month, today = S.data.today, first = month + '-01';
-  var def = month === today.slice(0, 7) ? today : first;
+  var month = S.data.month, today = S.data.today, first = dayKeys(S.data)[0];
+  var def = month === curMonth(S.data) ? today : first;
   var left = function (c) { return Math.max(0, Math.round(((b[c] || 0) - (spent[c] || 0)) * 100) / 100); };
   cat = cat || PLAN_GROUPS[0].cats.filter(function (c) { return b[c] && !markedPaid(c); })[0] || 'Rent';
   openSheet('<h3>Mark a bill as paid</h3><p class="sub">For something you paid outside the tracker, like rent paid before the dashboard started. It is saved as a payment, so it counts in your totals and the sheet.</p>' +
@@ -2153,7 +2170,7 @@ function allStats(A){
   for (var i = 0; i < 24; i++) s.hr.push(0);
   s.first = rows.length ? rows[0].d : A.today;
   rows.forEach(function(r){
-    var mk = r.d.slice(0,7), M = s.months[mk] = s.months[mk] || { inn: 0, out: 0, cats: {} };
+    var mk = labelOf(r.d), M = s.months[mk] = s.months[mk] || { inn: 0, out: 0, cats: {} };
     if (r.t === 'Out' && aside(r.c)){ s.aside += r.a; s.asideCats[r.c] = (s.asideCats[r.c] || 0) + r.a; } // kept, not spent
     else if (r.t === 'Out'){
       s.out += r.a; s.nOut++; M.out += r.a; M.cats[r.c] = (M.cats[r.c] || 0) + r.a; s.cats[r.c] = (s.cats[r.c] || 0) + r.a;
@@ -2166,8 +2183,10 @@ function allStats(A){
   var wdCount = [0,0,0,0,0,0,0];
   s.days.forEach(function(k){ var w = (new Date(k + 'T12:00:00').getDay() + 6) % 7; wdCount[w]++; s.wd[w] += s.perDay[k] || 0; });
   s.wdAvg = s.wd.map(function(v, j){ return wdCount[j] ? v / wdCount[j] : 0; });
-  s.mList = []; var m = s.first.slice(0,7), end = A.today.slice(0,7);
-  while (m <= end){ var M2 = s.months[m] || { inn: 0, out: 0, cats: {} }; s.mList.push({ m: m, inn: M2.inn, out: M2.out, net: M2.inn - M2.out, cats: M2.cats }); m = shiftMonth(m, 1); }
+  s.mList = []; var m = labelOf(s.first), end = labelOf(A.today), ml = (S.data && S.data.months) || [];
+  var addM = function(m){ var M2 = s.months[m] || { inn: 0, out: 0, cats: {} }; s.mList.push({ m: m, inn: M2.inn, out: M2.out, net: M2.inn - M2.out, cats: M2.cats }); };
+  if (ml.length) ml.forEach(function(x){ if (x >= m && x <= end) addM(x); });
+  else while (m <= end){ addM(m); m = shiftMonth(m, 1); }
   s.big.sort(function(a, b){ return b.a - a.a; });
   s.net = s.inn - s.out; s.rate = s.inn ? s.net / s.inn * 100 : null;
   s.nMonths = s.mList.length; s.avgOut = s.out / Math.max(1, s.nMonths);
@@ -2593,7 +2612,7 @@ function atxList(){
   order.forEach(function(d){
     h += '<div class="day"><div class="day-h"><span>' + new Date(d + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) + '</span></div>' + by[d].map(function(r){
       var inn = r.t === 'In';
-      return '<button class="tx atx" data-goto="' + r.d.slice(0, 7) + '" data-goday="' + r.d + '" data-gox="amt:' + r.a + '" aria-label="Open in ' + mName(r.d.slice(0, 7)) + '"><span class="ico">' + txIcon(r.c, r.p) + '</span>' +
+      return '<button class="tx atx" data-goto="' + labelOf(r.d) + '" data-goday="' + r.d + '" data-gox="amt:' + r.a + '" aria-label="Open in ' + cName(labelOf(r.d)) + '"><span class="ico">' + txIcon(r.c, r.p) + '</span>' +
         '<span class="mid"><span class="p">' + esc(r.p || (inn ? 'Money in' : r.c)) + '</span><span class="m"><span class="chip">' + esc(r.c) + '</span>' + ('0' + r.h).slice(-2) + ':00' + (r.w ? ' · Apple Pay' : '') + '</span></span>' +
         '<span class="amt num ' + (inn ? 'in' : 'out') + '">' + (inn ? '+' : '−') + money(r.a) + '</span></button>';
     }).join('') + '</div>';
@@ -2726,8 +2745,8 @@ $('body').addEventListener('click', function(e){
   S.pend = m.getAttribute('data-goday') ? { day: m.getAttribute('data-goday'), x: m.getAttribute('data-gox') || null } : null;
   S.month = m.getAttribute('data-goto'); setMode('month'); if (!S.pend) window.scrollTo(0, 0);
 });
-$('prev').onclick = function(){ var m = S.want || S.month; if (m) load(shiftMonth(m, -1)); };
-$('next').onclick = function(){ var m = S.want || S.month; if (m && (!S.data || shiftMonth(m, 1) <= S.data.today.slice(0,7))) load(shiftMonth(m, 1)); };
+$('prev').onclick = function(){ var m = S.want || S.month, t = m && stepMonth(m, -1); if (t) load(t); };
+$('next').onclick = function(){ var m = S.want || S.month, t = m && stepMonth(m, 1); if (t) load(t); };
 // Light / dark switch: one tap flips between light and dark. Remembered on this device; first visit follows the phone.
 var THEME_IC = {
   auto: '<svg width="14" height="14" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h3v1H2zM1 1h1v1H1zM0 2h1v3H0zM1 5h1v1H1zM2 6h3v1H2zM5 5h1v1H5zM6 2h1v3H6zM5 1h1v1H5zM3 1h2v5H3zM5 2h1v3H5z"/></svg>',
